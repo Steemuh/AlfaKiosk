@@ -18,6 +18,7 @@ export async function addToCart(checkoutId: string, variantId: string, quantity:
 			variables: {
 				id: checkoutId,
 				productVariantId: variantId,
+				quantity: quantity,
 			},
 			cache: "no-cache",
 		});

@@ -12,17 +12,8 @@ export const DefaultChannelSlug =
 
 export const getServerAuthClient = async () => {
 	// const nextServerCookiesStorage = await getNextServerCookiesStorageAsync();
-	const storage = {
-		getItem: () => null,
-		setItem: () => {},
-		removeItem: () => {},
-		length: 0,
-		clear: () => {},
-		key: () => null,
-	};
 	return new SaleorAuthClient({
 		saleorApiUrl,
-		storage,
 		// refreshTokenStorage: nextServerCookiesStorage,
 		// accessTokenStorage: nextServerCookiesStorage,
 	});

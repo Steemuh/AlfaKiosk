@@ -1,6 +1,5 @@
 "use client";
 
-import { LinkWithChannel } from "@/ui/atoms/LinkWithChannel";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMobileMenu } from "./useMobileMenu";
@@ -43,7 +42,13 @@ export const MobileCategories = ({ channel }: MobileCategoriesProps) => {
 						`,
 					}),
 				});
-				const { data } = await response.json();
+				const { data } = (await response.json()) as {
+				data: {
+					categories?: {
+						edges?: Array<{ node: Category }>;
+					};
+				};
+			};
 				const categoryList: Category[] = [
 					{ name: "All", slug: "all" },
 					...(data?.categories?.edges?.map(({ node }: { node: Category }) => ({

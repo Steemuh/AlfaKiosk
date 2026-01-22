@@ -6,10 +6,7 @@ export const metadata = {
 	title: "Order · Alfamart Food Kiosk",
 };
 
-export default async function CheckoutPage(props: {
-	searchParams: Promise<{ checkout?: string; order?: string }>;
-}) {
-	const searchParams = await props.searchParams;
+export default async function CheckoutPage() {
 	invariant(process.env.NEXT_PUBLIC_SALEOR_API_URL, "Missing NEXT_PUBLIC_SALEOR_API_URL env variable");
 
 	// Allow checkout page to load even without URL parameters

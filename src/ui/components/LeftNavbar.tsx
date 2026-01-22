@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+
 import { NavLinks } from "./nav/components/NavLinks";
 
 export const LeftNavbar = ({ channel }: { channel: string }) => {

@@ -1,6 +1,6 @@
 import { LinkWithChannel } from "../atoms/LinkWithChannel";
 
-export function Footer({ channel }: { channel: string }) {
+export function Footer({  }: { channel: string }) {
 	const currentYear = new Date().getFullYear();
 
 	return (

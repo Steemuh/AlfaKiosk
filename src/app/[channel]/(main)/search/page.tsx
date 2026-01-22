@@ -17,6 +17,7 @@ export default async function Page(props: {
 	const [searchParams, params] = await Promise.all([props.searchParams, props.params]);
 
 	const searchValue = searchParams.query;
+	const { channel } = params;
 
 	if (!searchValue) {
 		notFound();
@@ -52,7 +53,7 @@ export default async function Page(props: {
 			{products.totalCount && products.totalCount > 0 ? (
 				<div>
 					<h1 className="pb-8 text-xl font-semibold">Search results for &quot;{searchValue}&quot;:</h1>
-					<ProductList products={products.edges.map((e) => e.node)} />
+				<ProductList products={products.edges.map((e) => e.node)} channel={channel} />
 					<Pagination pageInfo={products.pageInfo} />
 				</div>
 			) : (

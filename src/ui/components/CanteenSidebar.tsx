@@ -1,12 +1,10 @@
 "use client";
 
 import {
-	Coffee,
 	Leaf,
 	Cake,
 	Wine,
 	Utensils,
-	Apple,
 	Package,
 	Grid,
 	LucideIcon,
@@ -92,7 +90,7 @@ const createOrderedCategories = (categories: Category[]) => {
 	});
 };
 
-export const CanteenSidebar = ({ categories, channel, onCategorySelect }: CanteenSidebarProps) => {
+export const CanteenSidebar = ({ categories,  onCategorySelect }: CanteenSidebarProps) => {
 	const orderedCategories = createOrderedCategories(categories);
 
 	const handleCategoryClick = (slug: string) => {
