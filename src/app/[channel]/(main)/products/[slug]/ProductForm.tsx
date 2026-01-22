@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-// import { useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { AddButton } from "./AddButton";
 import { VariantSelector } from "@/ui/components/VariantSelector";
 import { QuantitySelector } from "@/ui/components/QuantitySelector";
@@ -12,7 +12,7 @@ import type { ProductListItemFragment, VariantDetailsFragment } from "@/gql/grap
 interface ProductFormProps {
 	productName: string;
 	productId: string;
-	// price: string;
+	price: string;
 	variants: readonly VariantDetailsFragment[] | undefined;
 	product: ProductListItemFragment;
 	selectedVariant: VariantDetailsFragment | undefined;
@@ -25,7 +25,7 @@ interface ProductFormProps {
 export const ProductForm = ({
 	productName,
 	productId,
-	// price,
+	price,
 	variants,
 	product,
 	selectedVariant,
@@ -37,8 +37,7 @@ export const ProductForm = ({
 	const [quantity, setQuantity] = useState(1);
 	const [showConfirmation, setShowConfirmation] = useState(false);
 	const formRef = useRef<HTMLFormElement>(null);
-	// const { pending } = useFormStatus();
-	// const pr = (price);
+	const { pending } = useFormStatus();
 	const handleSubmit = async (formData: FormData) => {
 		// Repeat the product addition for the specified quantity
 		for (let i = 0; i < quantity; i++) {
@@ -67,8 +66,9 @@ export const ProductForm = ({
 				)}
 				<AvailabilityMessage isAvailable={isAvailable} />
 				<QuantitySelector maxQuantity={100} onQuantityChange={setQuantity} />
-				<div className="mt-4">
-					<AddButton disabled={!selectedVariantID || !selectedVariant?.quantityAvailable} />
+			<div className="mt-2 text-sm font-semibold">Price: {price}</div>
+			<div className="mt-4">
+				<AddButton disabled={!selectedVariantID || !selectedVariant?.quantityAvailable || pending} />
 				</div>
 			</form>
 
