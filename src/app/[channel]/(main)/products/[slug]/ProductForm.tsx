@@ -37,7 +37,7 @@ export const ProductForm = ({
 	const [quantity, setQuantity] = useState(1);
 	const [showConfirmation, setShowConfirmation] = useState(false);
 	const formRef = useRef<HTMLFormElement>(null);
-	const { pending } = useFormStatus();
+	// const { pending } = useFormStatus();
 	// const pr = (price);
 	const handleSubmit = async (formData: FormData) => {
 		// Repeat the product addition for the specified quantity
