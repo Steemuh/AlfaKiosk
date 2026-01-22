@@ -1,0 +1,11 @@
+query CategoriesList($first: Int!) {
+	categories(first: $first) {
+		edges {
+			node {
+				id
+				name
+				slug
+			}
+		}
+	}
+}

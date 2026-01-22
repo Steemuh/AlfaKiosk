@@ -1,0 +1,35 @@
+fragment ProductListItem on Product {
+	id
+	name
+	slug
+	pricing {
+		priceRange {
+			start {
+				gross {
+					amount
+					currency
+				}
+			}
+			stop {
+				gross {
+					amount
+					currency
+				}
+			}
+		}
+	}
+	category {
+		id
+		name
+		slug
+	}
+	variants {
+		id
+		name
+		quantityAvailable
+	}
+	thumbnail(size: 1024, format: WEBP) {
+		url
+		alt
+	}
+}
