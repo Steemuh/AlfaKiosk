@@ -12,7 +12,7 @@ import type { ProductListItemFragment, VariantDetailsFragment } from "@/gql/grap
 interface ProductFormProps {
 	productName: string;
 	productId: string;
-	price: string;
+	price: string | null | undefined;
 	variants: readonly VariantDetailsFragment[] | undefined;
 	product: ProductListItemFragment;
 	selectedVariant: VariantDetailsFragment | undefined;
@@ -66,7 +66,7 @@ export const ProductForm = ({
 				)}
 				<AvailabilityMessage isAvailable={isAvailable} />
 				<QuantitySelector maxQuantity={100} onQuantityChange={setQuantity} />
-			<div className="mt-2 text-sm font-semibold">Price: {price}</div>
+			{price && <div className="mt-2 text-sm font-semibold">Price: {price}</div>}
 			<div className="mt-4">
 				<AddButton disabled={!selectedVariantID || !selectedVariant?.quantityAvailable || pending} />
 				</div>
