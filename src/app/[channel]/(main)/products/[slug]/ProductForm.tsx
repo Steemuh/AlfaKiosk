@@ -13,7 +13,7 @@ interface ProductFormProps {
 	productName: string;
 	productId: string;
 	price: string | null | undefined;
-	variants: readonly VariantDetailsFragment[] | undefined;
+	variants: readonly VariantDetailsFragment[] | null | undefined;
 	product: ProductListItemFragment;
 	selectedVariant: VariantDetailsFragment | undefined;
 	isAvailable: boolean;
