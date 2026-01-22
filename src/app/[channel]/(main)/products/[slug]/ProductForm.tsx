@@ -12,7 +12,7 @@ import type { ProductListItemFragment, VariantDetailsFragment } from "@/gql/grap
 interface ProductFormProps {
 	productName: string;
 	productId: string;
-	price: string;
+	// price: string;
 	variants: readonly VariantDetailsFragment[] | undefined;
 	product: ProductListItemFragment;
 	selectedVariant: VariantDetailsFragment | undefined;
@@ -25,7 +25,7 @@ interface ProductFormProps {
 export const ProductForm = ({
 	productName,
 	productId,
-	price,
+	// price,
 	variants,
 	product,
 	selectedVariant,
@@ -38,7 +38,7 @@ export const ProductForm = ({
 	const [showConfirmation, setShowConfirmation] = useState(false);
 	const formRef = useRef<HTMLFormElement>(null);
 	const { pending } = useFormStatus();
-
+	// const pr = (price);
 	const handleSubmit = async (formData: FormData) => {
 		// Repeat the product addition for the specified quantity
 		for (let i = 0; i < quantity; i++) {
@@ -46,6 +46,8 @@ export const ProductForm = ({
 		}
 		setShowConfirmation(true);
 		setQuantity(1);
+		console.debug(productId);
+		
 	};
 
 	return (
