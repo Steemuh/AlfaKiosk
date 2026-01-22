@@ -36,6 +36,7 @@ export default async function Page(props: {
 }) {
 	const searchParams = await props.searchParams;
 	const params = await props.params;
+	const { channel } = params;
 
 	const paginationVariables = getPaginatedListVariables({ params: searchParams });
 	const sortVariables = getSortVariables(searchParams.sort);
@@ -61,7 +62,7 @@ export default async function Page(props: {
 					<SortBy />
 				</div>
 				<h2 className="sr-only">Product list</h2>
-				<ProductList products={products.edges.map((e) => e.node)} />
+			<ProductList products={products.edges.map((e) => e.node)} channel={channel} />
 				<Pagination pageInfo={products.pageInfo} />
 			</section>
 		</>
