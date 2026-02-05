@@ -46,6 +46,13 @@ export function CashierThemeProvider({ children }: { children: React.ReactNode }
 export function useCashierTheme() {
 	const context = useContext(CashierThemeContext);
 	if (context === undefined) {
+		// Return default values on server or during SSR
+		if (typeof window === 'undefined') {
+			return {
+				theme: 'dark' as Theme,
+				toggleTheme: () => {},
+			};
+		}
 		throw new Error('useCashierTheme must be used within CashierThemeProvider');
 	}
 	return context;
