@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
 
 export interface CartItem {
 	id: string;
@@ -13,21 +13,20 @@ export interface CartItem {
 
 interface CartContextType {
 	items: CartItem[];
-	setItems: (items: CartItem[]) => void;
 	totalPrice: number;
 	addItem: (item: CartItem) => void;
 	removeItem: (id: string) => void;
 	clearCart: () => void;
 }
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+export const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
 	const [items, setItems] = useState<CartItem[]>([]);
 
 	const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-	const addItem = (item: CartItem) => {
+	const addItem = useCallback((item: CartItem) => {
 		setItems((prev) => {
 			const existing = prev.find((i) => i.id === item.id);
 			if (existing) {
@@ -37,18 +36,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
 			}
 			return [...prev, item];
 		});
-	};
+	}, []);
 
-	const removeItem = (id: string) => {
+	const removeItem = useCallback((id: string) => {
 		setItems((prev) => prev.filter((i) => i.id !== id));
-	};
+	}, []);
 
-	const clearCart = () => {
+	const clearCart = useCallback(() => {
 		setItems([]);
-	};
+	}, []);
+
+	const value = useMemo(
+		() => ({ items, totalPrice, addItem, removeItem, clearCart }),
+		[items, totalPrice, addItem, removeItem, clearCart]
+	);
 
 	return (
-		<CartContext.Provider value={{ items, setItems, totalPrice, addItem, removeItem, clearCart }}>
+		<CartContext.Provider value={value}>
 			{children}
 		</CartContext.Provider>
 	);

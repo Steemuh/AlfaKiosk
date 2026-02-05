@@ -12,10 +12,10 @@ export default function PlaceOrderButton() {
 	const cartItems = checkout?.lines?.map((line: any) => ({
 		name: line.variant?.product?.name || 'Unknown Item',
 		quantity: line.quantity,
-		price: parseFloat(line.unitPrice?.gross?.amount || '0'),
+		price: parseFloat(String(line.unitPrice?.gross?.amount || '0')),
 	})) || [];
 
-	const totalPrice = parseFloat(checkout?.totalPrice?.gross?.amount || '0');
+	const totalPrice = parseFloat(String(checkout?.totalPrice?.gross?.amount || '0'));
 
 	const handlePlaceOrder = () => {
 		if (!cartItems.length) {
