@@ -3,6 +3,8 @@
 import { Suspense } from 'react';
 import CashierContent from './CashierContent';
 
+export const dynamic = 'force-dynamic';
+
 export default function CashierDashboard() {
 	return (
 		<Suspense fallback={

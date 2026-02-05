@@ -3,6 +3,8 @@
 import { Suspense } from 'react';
 import OrderConfirmationContent from './OrderConfirmationContent';
 
+export const dynamic = 'force-dynamic';
+
 export default function OrderConfirmationPage() {
 	return (
 		<Suspense fallback={
