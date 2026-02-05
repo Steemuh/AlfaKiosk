@@ -31,7 +31,7 @@ export default function CustomerOrderButton() {
 			<PlaceOrderModal
 				isOpen={isModalOpen}
 				onClose={() => setIsModalOpen(false)}
-				items={[{ name: 'Sample Food Item', quantity: 1, price: 15.99 }]}
+				cartItems={[{ name: 'Sample Food Item', quantity: 1, price: 15.99 }]}
 				totalPrice={15.99}
 			/>
 		</>
