@@ -20,15 +20,15 @@ interface CartContextType {
 }
 
 export const CartContext = createContext<CartContextType>({
-    items: [],
-    totalPrice: 0,
-    addItem: () => { throw new Error('useCart must be used within CartProvider'); },
-    removeItem: () => { throw new Error('useCart must be used within CartProvider'); },
-    clearCart: () => { throw new Error('useCart must be used within CartProvider'); },
+	items: [],
+	totalPrice: 0,
+	addItem: () => { throw new Error('useCart must be used within CartProvider'); },
+	removeItem: () => { throw new Error('useCart must be used within CartProvider'); },
+	clearCart: () => { throw new Error('useCart must be used within CartProvider'); },
 });
 
 interface CartProviderProps {
-    children: ReactNode;
+	children: ReactNode;
 }
 
 export function CartProvider({ children }: CartProviderProps) {
