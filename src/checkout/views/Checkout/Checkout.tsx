@@ -7,6 +7,7 @@ import { ProceedButton } from "@/checkout/sections/Summary/ProceedButton";
 import { KioskCheckoutForm } from "@/checkout/sections/KioskCheckoutForm";
 import { useCheckout } from "@/checkout/hooks/useCheckout";
 import { CheckoutSkeleton } from "@/checkout/views/Checkout/CheckoutSkeleton";
+import PlaceOrderButton from "@/checkout/components/PlaceOrderButton";
 
 /**
  * Simplified Checkout for food kiosk - removes user authentication complexity
@@ -44,6 +45,8 @@ export const Checkout = () => {
 						<Suspense fallback={<CheckoutSkeleton />}>
 							<KioskCheckoutForm />
 						</Suspense>
+
+						<PlaceOrderButton />
 						
 						<ProceedButton onClick={handleProceedPayment} disabled={!checkout?.lines.length} />
 					</div>
