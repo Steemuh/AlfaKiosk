@@ -1,0 +1,7 @@
+1:"$Sreact.fragment"
+2:I[48973,["/_next/static/chunks/23ee29df02207ac7.js","/_next/static/chunks/bc0055a07e4f2c2a.js","/_next/static/chunks/a32836dc1010eee9.js"],""]
+3:I[97575,["/_next/static/chunks/23ee29df02207ac7.js","/_next/static/chunks/bc0055a07e4f2c2a.js","/_next/static/chunks/a32836dc1010eee9.js"],"RootWrapper"]
+4:I[80113,["/_next/static/chunks/73bf9f112e7f8923.js","/_next/static/chunks/98ff1c52190a8317.js"],"OutletBoundary"]
+5:"$Sreact.suspense"
+0:{"buildId":"D6k8IdS0qkj8GDBcfVIOQ","rsc":["$","$1","c",{"children":[["$","div",null,{"className":"min-h-dvh bg-white","children":["$","section",null,{"className":"mx-auto flex min-h-dvh max-w-7xl flex-col p-8","children":[["$","div",null,{"className":"flex items-center justify-between","children":[["$","div",null,{"className":"flex items-center font-bold","children":["$","$L2",null,{"aria-label":"homepage","href":"/","children":"Alfamart Food Kiosk"}]}],["$","$L2",null,{"href":"/","className":"inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700","children":"← Back to Menu"}]]}],["$","h1",null,{"className":"mt-8 text-3xl font-bold text-neutral-900","children":"Complete Order"}],["$","section",null,{"className":"mb-12 mt-6 flex-1","children":["$","$L3",null,{"saleorApiUrl":"https://store-lzhtbcf7.saleor.cloud/graphql/"}]}]]}]}],[["$","script","script-0",{"src":"/_next/static/chunks/a32836dc1010eee9.js","async":true}]],["$","$L4",null,{"children":["$","$5",null,{"name":"Next.MetadataOutlet","children":"$@6"}]}]]}],"loading":null,"isPartial":false}
+6:null

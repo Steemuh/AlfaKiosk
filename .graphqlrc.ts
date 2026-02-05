@@ -20,9 +20,9 @@ if (!schemaUrl) {
 const config: CodegenConfig = {
 	overwrite: true,
 	schema: schemaUrl,
-	documents: "src/graphql/**/*.graphql",
+	documents: "packages/shared/src/graphql/**/*.graphql",
 	generates: {
-		"src/gql/": {
+		"packages/shared/src/gql/": {
 			preset: "client",
 			plugins: [],
 			config: {

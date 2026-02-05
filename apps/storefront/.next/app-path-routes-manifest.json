@@ -1,0 +1,10 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/draft/disable/route": "/api/draft/disable",
+  "/api/draft/route": "/api/draft",
+  "/checkout/page": "/checkout",
+  "/order-confirmation/page": "/order-confirmation",
+  "/page": "/",
+  "/robots.txt/route": "/robots.txt"
+}

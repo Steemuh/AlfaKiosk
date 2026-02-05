@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 18, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Macko%20Buenviaje/OneDrive/Desktop/SaleorProj/SaleorProj/storefront/apps/storefront/src/app/page.tsx"],"sourcesContent":["import { redirect } from 'next/navigation';\r\n\r\nexport default function EmptyPage() {\r\n\t// Customer app no longer has role selector\r\n\t// Redirect to the channel home or a default route\r\n\tredirect('/en-US');\r\n};\r\n"],"names":[],"mappings":";;;;AAAA;AAAA;;AAEe,SAAS;IACvB,2CAA2C;IAC3C,kDAAkD;IAClD,IAAA,mWAAQ,EAAC;AACV"}}]
+}

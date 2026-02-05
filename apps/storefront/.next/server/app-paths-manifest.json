@@ -1,0 +1,10 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/draft/disable/route": "app/api/draft/disable/route.js",
+  "/api/draft/route": "app/api/draft/route.js",
+  "/checkout/page": "app/checkout/page.js",
+  "/order-confirmation/page": "app/order-confirmation/page.js",
+  "/page": "app/page.js",
+  "/robots.txt/route": "app/robots.txt/route.js"
+}

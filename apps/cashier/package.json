@@ -1,0 +1,42 @@
+{
+  "name": "@saleor/cashier",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "lint": "eslint",
+    "predev": "cd ../.. && pnpm generate",
+    "prebuild": "cd ../.. && pnpm generate"
+  },
+  "dependencies": {
+    "@saleor/shared": "workspace:*",
+    "clsx": "2.1.0",
+    "lucide-react": "0.358.0",
+    "next": "16.0.10",
+    "react": "^19.1.2",
+    "react-dom": "^19.1.2",
+    "react-toastify": "^11.0.0",
+    "urql": "4.0.6",
+    "zustand": "4.4.6"
+  },
+  "devDependencies": {
+    "@parcel/watcher": "2.3.0",
+    "@tailwindcss/container-queries": "0.1.1",
+    "@tailwindcss/forms": "0.5.7",
+    "@tailwindcss/typography": "0.5.10",
+    "@types/node": "20.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "8.48.1",
+    "@typescript-eslint/parser": "8.48.1",
+    "autoprefixer": "10.4.16",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.0.7",
+    "postcss": "8.4.32",
+    "tailwindcss": "3.4.0",
+    "typescript": "5.3.3"
+  }
+}
