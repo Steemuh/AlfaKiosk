@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
 
 export interface CartItem {
 	id: string;
@@ -19,7 +19,7 @@ interface CartContextType {
 	clearCart: () => void;
 }
 
-export const CartContext = createContext<CartContextType>({
+export const CartContext = React.createContext<CartContextType>({
 	items: [],
 	totalPrice: 0,
 	addItem: () => { throw new Error('useCart must be used within CartProvider'); },
