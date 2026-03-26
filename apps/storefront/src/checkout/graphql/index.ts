@@ -27943,7 +27943,30 @@ export type CheckoutCompleteMutation = {
 			field?: string | null;
 			code: CheckoutErrorCode;
 		}>;
-		order?: { __typename?: "Order"; id: string } | null;
+		order?: {
+			__typename?: "Order";
+			id: string;
+			number?: string | null;
+			total?: {
+				__typename?: "TaxedMoney";
+				gross: { __typename?: "Money"; amount: number; currency: string };
+			} | null;
+			lines?: Array<{
+				__typename?: "OrderLine";
+				id: string;
+				productName: string;
+				quantity: number;
+				unitPrice: {
+					__typename?: "TaxedMoney";
+					gross: { __typename?: "Money"; amount: number; currency: string };
+				};
+			}> | null;
+			billingAddress?: {
+				__typename?: "Address";
+				firstName: string;
+				lastName: string;
+			} | null;
+		} | null;
 	} | null;
 };
 
@@ -29297,6 +29320,28 @@ export const CheckoutCompleteDocument = gql`
 			}
 			order {
 				id
+				number
+				total {
+					gross {
+						amount
+						currency
+					}
+				}
+				lines {
+					id
+					productName
+					quantity
+					unitPrice {
+						gross {
+							amount
+							currency
+						}
+					}
+				}
+				billingAddress {
+					firstName
+					lastName
+				}
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ShoppingCartIcon } from "lucide-react";
 import clsx from "clsx";
-import * as Checkout from "@/lib/checkout";
+import * as Checkout from "@saleor/shared/lib/checkout";
 
 export const CartNavItem = async ({ channel }: { channel: string }) => {
 	const checkoutId = await Checkout.getIdFromCookies(channel);

@@ -1,4 +1,4 @@
-import { type UserDetailsFragment } from "@/gql/graphql";
+import { type UserDetailsFragment } from "@saleor/shared/gql/graphql";
 
 type Props = {
 	user: UserDetailsFragment;

@@ -3,5 +3,6 @@
 @tailwind utilities;
 
 body {
+	font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 	overflow-x: hidden;
 }

@@ -1,7 +1,7 @@
 
 import { UserMenu } from "./UserMenu";
-import { CurrentUserDocument } from "@/gql/graphql";
-import { executeGraphQL } from "@/lib/graphql";
+import { CurrentUserDocument } from "@saleor/shared/gql/graphql";
+import { executeGraphQL } from "@saleor/shared/lib/graphql";
 
 
 export async function UserMenuContainer() {

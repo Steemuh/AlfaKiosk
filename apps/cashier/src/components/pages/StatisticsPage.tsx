@@ -11,33 +11,29 @@ export default function StatisticsPage({ theme }: StatisticsPageProps) {
 	const { orders } = useOrderStore();
 	const [stats, setStats] = useState({
 		totalOrders: 0,
-		completedOrders: 0,
-		pendingOrders: 0,
-		averageOrderValue: 0,
 		totalRevenue: 0,
 	});
 
 	useEffect(() => {
-		if (orders.length > 0) {
-			const completed = orders.filter((o) => o.status === 'ready' || (o.status as string) === 'picked_up').length;
-			const pending = orders.filter((o) => o.status === 'incoming' || o.status === 'preparing').length;
-			const revenue = orders.reduce((sum, order) => {
-				const orderTotal = order.items.reduce(
-					(itemSum: number, item: any) =>
-						itemSum + (item.price ? item.price * (item.quantity || 1) : 0),
-					0
-				);
-				return sum + orderTotal;
-			}, 0);
+		// Only count orders that have been accepted (not 'incoming')
+		const acceptedOrders = orders.filter((o) => o.status !== 'incoming');
+		
+		// Only count revenue from completed orders
+		const completedOrders = orders.filter((o) => o.status === 'completed');
+		
+		const revenue = completedOrders.reduce((sum, order) => {
+			const orderTotal = order.items.reduce(
+				(itemSum: number, item: any) =>
+					itemSum + (item.price ? item.price * (item.quantity || 1) : 0),
+				0
+			);
+			return sum + orderTotal;
+		}, 0);
 
-			setStats({
-				totalOrders: orders.length,
-				completedOrders: completed,
-				pendingOrders: pending,
-				averageOrderValue: orders.length > 0 ? revenue / orders.length : 0,
-				totalRevenue: revenue,
-			});
-		}
+		setStats({
+			totalOrders: acceptedOrders.length,
+			totalRevenue: revenue,
+		});
 	}, [orders]);
 
 	const StatCard = ({
@@ -81,7 +77,7 @@ export default function StatisticsPage({ theme }: StatisticsPageProps) {
 				</p>
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<StatCard
 					label="Total Orders"
 					value={stats.totalOrders}
@@ -89,26 +85,8 @@ export default function StatisticsPage({ theme }: StatisticsPageProps) {
 					color="text-blue-500"
 				/>
 				<StatCard
-					label="Completed"
-					value={stats.completedOrders}
-					icon="✅"
-					color="text-green-500"
-				/>
-				<StatCard
-					label="Pending"
-					value={stats.pendingOrders}
-					icon="⏳"
-					color="text-yellow-500"
-				/>
-				<StatCard
-					label="Avg Order Value"
-					value={`$${stats.averageOrderValue.toFixed(2)}`}
-					icon="💰"
-					color="text-purple-500"
-				/>
-				<StatCard
 					label="Total Revenue"
-					value={`$${stats.totalRevenue.toFixed(2)}`}
+					value={`₱${stats.totalRevenue.toFixed(2)}`}
 					icon="📈"
 					color="text-emerald-500"
 				/>

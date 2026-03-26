@@ -1,13 +1,18 @@
+import { Suspense } from "react";
 import { Logo } from "./Logo";
-import { Nav } from "./nav/Nav";
+import { CartNavItem } from "./nav/components/CartNavItem";
 
 export function Header({ channel }: { channel: string }) {
 	return (
-		<header className="sticky top-0 z-20 bg-neutral-100/50 backdrop-blur-md">
-			<div className="mx-auto max-w-7xl px-3 sm:px-8">
-				<div className="flex h-16 justify-between gap-4 md:gap-8">
+		<header className="fixed top-0 left-0 right-0 z-50 bg-neutral-100 shadow-sm">
+			<div className="flex h-20 items-center justify-between px-6 w-full">
+				<div>
 					<Logo />
-					<Nav channel={channel} />
+				</div>
+				<div>
+					<Suspense fallback={<div className="w-6" />}>
+						<CartNavItem channel={channel} />
+					</Suspense>
 				</div>
 			</div>
 		</header>

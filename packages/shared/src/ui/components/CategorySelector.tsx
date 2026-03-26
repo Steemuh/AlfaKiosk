@@ -1,6 +1,6 @@
-import { LinkWithChannel } from "@/ui/atoms/LinkWithChannel";
-import { executeGraphQL } from "@/lib/graphql";
-import { CategoriesListDocument } from "@/gql/graphql";
+import { LinkWithChannel } from "@saleor/shared/ui/atoms/LinkWithChannel";
+import { executeGraphQL } from "@saleor/shared/lib/graphql";
+import { CategoriesListDocument } from "@saleor/shared/gql/graphql";
 
 export const CategorySelector = async () => {
 	const { categories } = await executeGraphQL(CategoriesListDocument, {

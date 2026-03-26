@@ -5,7 +5,7 @@ import { useOrderStore } from '@saleor/shared/lib/orderStore';
 import OrderCard from '@/components/OrderCard';
 
 export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' | 'dark' }) {
-	const { getOrdersByStatus, removeOrder } = useOrderStore();
+	const { getOrdersByStatus, updateOrderStatus } = useOrderStore();
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
@@ -15,7 +15,8 @@ export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' 
 	const readyOrders = getOrdersByStatus('ready');
 
 	const handleMarkPickedUp = (orderId: string) => {
-		removeOrder(orderId);
+		// Mark as completed instead of removing, so it won't reappear from API
+		updateOrderStatus(orderId, 'completed');
 	};
 
 	if (!mounted) {

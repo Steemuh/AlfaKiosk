@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { LinkWithChannel } from "../atoms/LinkWithChannel";
-import { ProductImageWrapper } from "@/ui/atoms/ProductImageWrapper";
+import { ProductImageWrapper } from "@saleor/shared/ui/atoms/ProductImageWrapper";
 import { Minus, Plus, Check } from "lucide-react";
 import { addItemToCart } from "@/app/actions";
 
-import type { ProductListItemFragment } from "@/gql/graphql";
-import { formatMoneyRange } from "@/lib/utils";
+import type { ProductListItemFragment } from "@saleor/shared/gql/graphql";
+import { formatMoneyRange } from "@saleor/shared/lib/utils";
 
 export function ProductElement({
 	product,
@@ -90,7 +90,7 @@ export function ProductElement({
 
 				{/* Quantity Selector */}
 				<div className="mt-3 flex items-center justify-center rounded-md border border-neutral-200 bg-white p-1.5 min-h-[2rem]">
-					<div className="flex items-center gap-1.5">
+					<div className="flex items-center gap-4">
 						<button
 							onClick={handleDecrease}
 							disabled={quantity <= 0}

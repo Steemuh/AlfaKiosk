@@ -38,7 +38,7 @@ export const QuantitySelector = ({ maxQuantity = 100, onQuantityChange }: Quanti
 	return (
 		<div className="mb-6">
 			<label className="mb-2 block text-sm font-medium text-neutral-900">Quantity</label>
-			<div className="flex items-center gap-4">
+			<div className="flex items-center gap-6">
 				<button
 					type="button"
 					onClick={handleDecrease}

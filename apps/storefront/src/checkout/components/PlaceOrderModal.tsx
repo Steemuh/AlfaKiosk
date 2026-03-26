@@ -1,8 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useOrderStore, type OrderItem } from '@saleor/shared/lib/orderStore';
+import { useCheckoutComplete } from '@/checkout/hooks/useCheckoutComplete';
+import { useCheckout } from '@/checkout/hooks/useCheckout';
+import {
+	useCheckoutBillingAddressUpdateMutation,
+	useCheckoutDeliveryMethodUpdateMutation,
+	useCheckoutEmailUpdateMutation,
+	useCheckoutShippingAddressUpdateMutation,
+} from '@/checkout/graphql';
+import { isValidEmail } from '@/checkout/lib/utils/common';
 
 interface PlaceOrderModalProps {
 	isOpen: boolean;
@@ -17,7 +24,6 @@ export default function PlaceOrderModal({
 	cartItems = [],
 	totalPrice = 0,
 }: PlaceOrderModalProps) {
-	const router = useRouter();
 	// Calculate pickup time: current time + 45 minutes
 	const getDefaultPickupTime = () => {
 		const now = new Date();
@@ -25,51 +31,125 @@ export default function PlaceOrderModal({
 		return now.toTimeString().slice(0, 5); // HH:MM format
 	};
 
-	const [customerName, setCustomerName] = useState('Juan Dela Cruz');
+	const [customerName, setCustomerName] = useState('');
+	const [email, setEmail] = useState('');
 	const [pickupTime, setPickupTime] = useState(getDefaultPickupTime());
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const { addOrder } = useOrderStore();
+	const { onCheckoutComplete } = useCheckoutComplete();
+	const { checkout } = useCheckout();
+	const [, updateDeliveryMethod] = useCheckoutDeliveryMethodUpdateMutation();
+	const [, updateEmail] = useCheckoutEmailUpdateMutation();
+	const [, updateBillingAddress] = useCheckoutBillingAddressUpdateMutation();
+	const [, updateShippingAddress] = useCheckoutShippingAddressUpdateMutation();
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!customerName.trim()) {
 			alert('Please enter your name');
 			return;
 		}
 
+		if (!(await isValidEmail(email))) {
+			alert('Please enter a valid email address');
+			return;
+		}
+
 		setIsSubmitting(true);
 
-		// Simulate API call
-		setTimeout(() => {
-			const orderId = `#ORD-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+		try {
+			if (!checkout) {
+				alert('Checkout not ready yet. Please try again.');
+				return;
+			}
 
-			// Convert cart items to order items
-			const orderItems: OrderItem[] = cartItems.length > 0 
-				? cartItems.map((item) => ({
-						name: item.name,
-						quantity: item.quantity,
-						price: item.price,
-					}))
-				: [{ name: 'Sample Item', quantity: 1, price: 15.99 }];
+			if (!checkout.email || checkout.email !== email) {
+				const emailResult = await updateEmail({
+					checkoutId: checkout.id,
+					email,
+					languageCode: 'EN_US',
+				});
+				const emailErrors = emailResult.data?.checkoutEmailUpdate?.errors ?? [];
+				if (emailErrors.length > 0) {
+					alert(emailErrors.map((error) => error.message).filter(Boolean).join('\n') || 'Failed to set email.');
+					return;
+				}
+			}
 
-			addOrder({
-				orderId,
-				customerName: customerName.trim(),
-				pickupTime,
-				items: orderItems,
-				status: 'new',
-				totalPrice: totalPrice || 15.99,
-			});
+			const [firstName, ...rest] = customerName.trim().split(' ');
+			const lastName = rest.length > 0 ? rest.join(' ') : 'Customer';
+			const billingAddress = {
+				firstName: firstName || 'Customer',
+				lastName,
+				streetAddress1: 'SM Retail Corporate Office, J.W. Diokno Blvd. cor. Bayshore Ave.',
+				city: 'Pasay City',
+				country: 'PH',
+				postalCode: '1300',
+				phone: '+639171234567',
+			};
 
-			// Reset form
-			setCustomerName('Juan Dela Cruz');
+			if (!checkout.billingAddress) {
+				const billingResult = await updateBillingAddress({
+					checkoutId: checkout.id,
+					billingAddress,
+					languageCode: 'EN_US',
+				});
+				const billingErrors = billingResult.data?.checkoutBillingAddressUpdate?.errors ?? [];
+				if (billingErrors.length > 0) {
+					alert(billingErrors.map((error) => error.message).filter(Boolean).join('\n') || 'Failed to set billing address.');
+					return;
+				}
+			}
+
+			if (checkout.isShippingRequired && !checkout.shippingAddress) {
+				const shippingResult = await updateShippingAddress({
+					checkoutId: checkout.id,
+					shippingAddress: billingAddress,
+					languageCode: 'EN_US',
+				});
+				const shippingErrors = shippingResult.data?.checkoutShippingAddressUpdate?.errors ?? [];
+				if (shippingErrors.length > 0) {
+					alert(shippingErrors.map((error) => error.message).filter(Boolean).join('\n') || 'Failed to set shipping address.');
+					return;
+				}
+			}
+
+			if (checkout.isShippingRequired && !checkout.deliveryMethod?.id) {
+				const defaultMethodId = checkout.shippingMethods?.[0]?.id;
+				if (!defaultMethodId) {
+					alert('No delivery method available. Please configure a shipping method in Saleor.');
+					return;
+				}
+
+				const deliveryResult = await updateDeliveryMethod({
+					checkoutId: checkout.id,
+					deliveryMethodId: defaultMethodId,
+				});
+				const deliveryErrors = deliveryResult.data?.checkoutDeliveryMethodUpdate?.errors ?? [];
+				if (deliveryErrors.length > 0) {
+					alert(deliveryErrors.map((error) => error.message).filter(Boolean).join('\n') || 'Failed to set delivery method.');
+					return;
+				}
+			}
+
+			const result = await onCheckoutComplete();
+			if (result?.hasErrors) {
+				const apiMessages = result.apiErrors?.map((error) => error.message).filter(Boolean) ?? [];
+				const gqlMessages = result.graphqlErrors?.map((error) => error.message).filter(Boolean) ?? [];
+				const message = [...apiMessages, ...gqlMessages].join('\n') || 'Failed to place order. Please try again.';
+				alert(message);
+				return;
+			}
+			// Reset form after successful order placement
+			setCustomerName('');
+			setEmail('');
 			setPickupTime(getDefaultPickupTime());
-			setIsSubmitting(false);
 			onClose();
-
-			// Redirect to order confirmation page
-			router.push(`/order-confirmation?orderId=${encodeURIComponent(orderId)}`);
-		}, 500);
+		} catch (error) {
+			console.error('Checkout completion failed:', error);
+			alert('Failed to place order. Please try again.');
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	if (!isOpen) return null;
@@ -89,11 +169,26 @@ export default function PlaceOrderModal({
 							type="text"
 							value={customerName}
 							onChange={(e) => setCustomerName(e.target.value)}
-							placeholder="Juan Dela Cruz"
+							placeholder="Enter your name"
 							className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
 							disabled={isSubmitting}
 						/>
 					</div>
+
+						<div>
+							<label className="block text-sm font-medium text-slate-700 mb-2">
+								Email
+							</label>
+							<input
+								type="email"
+								value={email}
+								onChange={(e) => setEmail(e.target.value)}
+								placeholder="customer@example.com"
+								className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+								disabled={isSubmitting}
+								required
+							/>
+						</div>
 
 					{/* Pickup Time */}
 					<div>

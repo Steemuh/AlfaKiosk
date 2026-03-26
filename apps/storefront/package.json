@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "pnpm exec next build",
+    "start": "next start -p $PORT",
     "lint": "eslint",
     "predev": "cd ../.. && pnpm generate",
     "prebuild": "cd ../.. && pnpm generate"

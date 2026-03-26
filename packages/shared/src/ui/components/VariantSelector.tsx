@@ -1,8 +1,8 @@
 import { clsx } from "clsx";
 import { redirect } from "next/navigation";
 import { LinkWithChannel } from "../atoms/LinkWithChannel";
-import { type ProductListItemFragment, type VariantDetailsFragment } from "@/gql/graphql";
-import { getHrefForVariant } from "@/lib/utils";
+import { type ProductListItemFragment, type VariantDetailsFragment } from "@saleor/shared/gql/graphql";
+import { getHrefForVariant } from "@saleor/shared/lib/utils";
 
 export function VariantSelector({
 	variants,

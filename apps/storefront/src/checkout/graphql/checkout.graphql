@@ -338,6 +338,28 @@ mutation checkoutComplete($checkoutId: ID!) {
 		}
 		order {
 			id
+			number
+			total {
+				gross {
+					amount
+					currency
+				}
+			}
+			lines {
+				id
+				productName
+				quantity
+				unitPrice {
+					gross {
+						amount
+						currency
+					}
+				}
+			}
+			billingAddress {
+				firstName
+				lastName
+			}
 		}
 	}
 }

@@ -14,8 +14,7 @@ export const OrderConfirmation = () => {
 						Order #{order.number} confirmed
 					</p>
 					<p className="text-base">
-						Thank you for placing your order. We&apos;ve received it and we will contact you as soon as your
-						package is shipped. A confirmation email has been sent to {order.userEmail}.
+					Your food order shall be given at this time. Please wait for your order number to be called.
 					</p>
 				</header>
 				<OrderInfo />

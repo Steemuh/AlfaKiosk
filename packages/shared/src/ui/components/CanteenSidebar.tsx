@@ -102,21 +102,27 @@ export const CanteenSidebar = ({ categories,  onCategorySelect }: CanteenSidebar
 	};
 
 	return (
-		<aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-24 overflow-y-auto border-r border-neutral-200 bg-neutral-50 py-4 z-10">
-			<nav className="flex flex-col gap-3 px-2">
+		<aside className="fixed left-0 top-[var(--canteen-sidebar-top)] h-[var(--canteen-sidebar-height)] w-[var(--canteen-sidebar-width)] overflow-hidden border-r border-neutral-200 bg-neutral-100 py-4">
+			<nav className="flex flex-col items-center gap-10 px-2">
 				{orderedCategories.map((category) => {
 					const Icon = getCategoryIcon(category.displayName);
+					const [line1, line2] = category.displayName.split('/');
 					return (
 						<button
 							key={category.slug}
 							onClick={() => handleCategoryClick(category.slug)}
-							className="group flex flex-col items-center gap-1 rounded-md px-1 py-2 transition-all hover:bg-neutral-200"
+							className="group flex w-full flex-col items-center gap-1 rounded-md px-1 py-2 transition-all hover:bg-neutral-200"
 							title={category.displayName}
 						>
-							<Icon className="h-5 w-5 text-neutral-700 transition-colors group-hover:text-neutral-900" />
-							<span className="text-[10px] text-center text-neutral-600 leading-tight group-hover:text-neutral-800 max-w-full break-words">
-								{category.displayName.replace('/', ' ')}
+							<Icon className="h-6 w-6 text-neutral-700 transition-colors group-hover:text-neutral-900" />
+							<span className="text-[6px] text-center text-neutral-600 leading-tight group-hover:text-neutral-800">
+								{line1.trim()}{line2 ? '/' : ''}
 							</span>
+							{line2 && (
+								<span className="text-[6px] text-center text-neutral-600 leading-tight group-hover:text-neutral-800 -mt-0.5">
+									{line2.trim()}
+								</span>
+							)}
 						</button>
 					);
 				})}

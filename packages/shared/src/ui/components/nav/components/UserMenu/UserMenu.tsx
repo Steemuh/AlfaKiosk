@@ -5,9 +5,9 @@ import clsx from "clsx";
 import { Menu, Transition } from "@headlessui/react";
 import { UserInfo } from "./components/UserInfo";
 import { UserAvatar } from "./components/UserAvatar";
-import { type UserDetailsFragment } from "@/gql/graphql";
+import { type UserDetailsFragment } from "@saleor/shared/gql/graphql";
 import { logout } from "@/app/actions";
-import { LinkWithChannel } from "@/ui/atoms/LinkWithChannel";
+import { LinkWithChannel } from "@saleor/shared/ui/atoms/LinkWithChannel";
 
 type Props = {
 	user: UserDetailsFragment;

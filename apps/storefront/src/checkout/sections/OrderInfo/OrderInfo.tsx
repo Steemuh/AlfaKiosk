@@ -12,7 +12,7 @@ export const OrderInfo = () => {
 	return (
 		<section className="mt-8">
 			<PaymentSection />
-			<DeliverySection deliveryMethod={deliveryMethod} />
+			{/* <DeliverySection deliveryMethod={deliveryMethod} /> */}
 			<Section title="Contact details">
 				<p>{userEmail}</p>
 			</Section>
@@ -21,11 +21,11 @@ export const OrderInfo = () => {
 					<Address address={shippingAddress} />
 				</Section>
 			)}
-			{billingAddress && (
+			{/* {billingAddress && (
 				<Section title="Billing address">
 					<Address address={billingAddress} />
 				</Section>
-			)}
+			)} */}
 		</section>
 	);
 };

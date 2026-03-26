@@ -13,7 +13,7 @@ export interface Order {
 	customerName: string;
 	pickupTime: string;
 	items: OrderItem[];
-	status: 'new' | 'incoming' | 'preparing' | 'ready';
+	status: 'new' | 'incoming' | 'preparing' | 'ready' | 'completed';
 	createdAt: number;
 	totalPrice: number;
 }
@@ -21,6 +21,7 @@ export interface Order {
 interface OrderStore {
 	orders: Order[];
 	addOrder: (order: Omit<Order, 'id' | 'createdAt'>) => void;
+	setOrders: (orders: Order[]) => void;
 	updateOrderStatus: (orderId: string, status: Order['status']) => void;
 	removeOrder: (orderId: string) => void;
 	getOrdersByStatus: (status: Order['status']) => Order[];
@@ -41,6 +42,31 @@ export const useOrderStore = create<OrderStore>()(
 				set((state) => ({
 					orders: [newOrder, ...state.orders],
 				}));
+			},
+
+			setOrders: (orders) => {
+				set((state) => {
+					const orderMap = new Map(state.orders.map((order) => [order.id, order]));
+
+					orders.forEach((order) => {
+						const existing = orderMap.get(order.id);
+						
+						// If order exists locally, preserve its status to prevent reverting
+						// local status changes (e.g., when order moved from incoming -> preparing -> ready)
+						if (existing) {
+							orderMap.set(order.id, {
+								...order,
+								status: existing.status,  // Always use local status for existing orders
+							});
+						} else {
+							// New order from API, use its status
+							orderMap.set(order.id, order);
+						}
+					});
+
+					const mergedOrders = Array.from(orderMap.values()).sort((a, b) => b.createdAt - a.createdAt);
+					return { orders: mergedOrders };
+				});
 			},
 
 			updateOrderStatus: (orderId, status) => {

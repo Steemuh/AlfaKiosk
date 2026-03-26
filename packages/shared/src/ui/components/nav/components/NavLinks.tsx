@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { NavLink } from "./NavLink";
-import { executeGraphQL } from "@/lib/graphql";
-import { MenuGetBySlugDocument } from "@/gql/graphql";
+import { executeGraphQL } from "@saleor/shared/lib/graphql";
+import { MenuGetBySlugDocument } from "@saleor/shared/gql/graphql";
 
 export const NavLinks = async ({ channel }: { channel: string }) => {
 	const navLinks = await executeGraphQL(MenuGetBySlugDocument, {

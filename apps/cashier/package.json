@@ -1,12 +1,12 @@
 {
-  "name": "@saleor/cashier",
+  "name": "cashier",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3001",
-    "build": "next build",
-    "start": "next start --port 3001",
+    "build": "pnpm exec next build",
+    "start": "next start -p $PORT",
     "lint": "eslint",
     "predev": "cd ../.. && pnpm generate",
     "prebuild": "cd ../.. && pnpm generate"
