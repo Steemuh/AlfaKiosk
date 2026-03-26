@@ -5,3 +5,9 @@
 body {
 	overflow-x: hidden;
 }
+
+:root {
+	--canteen-sidebar-width: 18vw;
+	--canteen-sidebar-top: 80px;
+	--canteen-sidebar-height: calc(100vh - 80px - 64px);
+}
