@@ -1,34 +1,52 @@
-import { executeGraphQL } from "@saleor/shared/lib/graphql";
-import {
-	CategoriesListDocument,
-	ProductListDocument,
-	type ProductListItemFragment,
-} from "@saleor/shared/gql/graphql";
-import { ProductList } from "@saleor/shared/ui/components/ProductList";
-import { CanteenSidebar } from "@saleor/shared/ui/components/CanteenSidebar";
-
 export const metadata = {
 	title: "Alfamart Food Kiosk - Order Now",
 	description: "Quick and easy food ordering from Alfamart canteen",
 };
 
-type CategoryEntry = {
-	name: string;
-	slug: string;
-	products: ProductListItemFragment[];
-};
-<h1>TEST PUSH NOW</h1>
-
 export default async function Page(props: { params: Promise<{ channel: string }> }) {
-  const { channel } = await props.params;
+	const { channel } = await props.params;
 
-  return (
-    <div style={{ padding: 40 }}>
-      <h1>CHANNEL PAGE IS RUNNING</h1>
-      <p>Channel: {channel}</p>
-    </div>
-  );
+	return (
+		<div style={{ padding: 40 }}>
+			<h1>CHANNEL PAGE IS RUNNING</h1>
+			<p>Channel: {channel}</p>
+		</div>
+	);
 }
+
+
+
+// import { executeGraphQL } from "@saleor/shared/lib/graphql";
+// import {
+// 	CategoriesListDocument,
+// 	ProductListDocument,
+// 	type ProductListItemFragment,
+// } from "@saleor/shared/gql/graphql";
+// import { ProductList } from "@saleor/shared/ui/components/ProductList";
+// import { CanteenSidebar } from "@saleor/shared/ui/components/CanteenSidebar";
+
+// export const metadata = {
+// 	title: "Alfamart Food Kiosk - Order Now",
+// 	description: "Quick and easy food ordering from Alfamart canteen",
+// };
+
+// type CategoryEntry = {
+// 	name: string;
+// 	slug: string;
+// 	products: ProductListItemFragment[];
+// };
+// <h1>TEST PUSH NOW</h1>
+
+// export default async function Page(props: { params: Promise<{ channel: string }> }) {
+//   const { channel } = await props.params;
+
+//   return (
+//     <div style={{ padding: 40 }}>
+//       <h1>CHANNEL PAGE IS RUNNING</h1>
+//       <p>Channel: {channel}</p>
+//     </div>
+//   );
+// }
 
 // export default async function Page(props: { params: Promise<{ channel: string }> }) {
 // 	const { channel } = await props.params;
