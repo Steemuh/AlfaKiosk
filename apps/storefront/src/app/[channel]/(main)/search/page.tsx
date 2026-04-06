@@ -23,7 +23,8 @@ export default async function Page(props: {
 		variables: {
 			search: searchValue,
 			channel: params.channel,
-			sortBy: { field: ProductOrderField.Name, direction: OrderDirection.Asc },
+			sortBy: ProductOrderField.Name, sortDirection: OrderDirection.Asc,
+			// { field: ProductOrderField.Name, direction: OrderDirection.Asc },
 			...paginationVariables,
 		},
 		revalidate: 60,
