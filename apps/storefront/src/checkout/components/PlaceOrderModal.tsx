@@ -5,6 +5,7 @@ import { useCheckoutComplete } from '@/checkout/hooks/useCheckoutComplete';
 import { useCheckout } from '@/checkout/hooks/useCheckout';
 import {
 	type CountryCode,
+	LanguageCodeEnum,
 	useCheckoutBillingAddressUpdateMutation,
 	useCheckoutDeliveryMethodUpdateMutation,
 	useCheckoutEmailUpdateMutation,
@@ -124,6 +125,7 @@ export default function PlaceOrderModal({
 				const deliveryResult = await updateDeliveryMethod({
 					checkoutId: checkout.id,
 					deliveryMethodId: defaultMethodId,
+					languageCode: LanguageCodeEnum.EN_US,
 				});
 				const deliveryErrors = deliveryResult.data?.checkoutDeliveryMethodUpdate?.errors ?? [];
 				if (deliveryErrors.length > 0) {
