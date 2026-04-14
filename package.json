@@ -6,7 +6,7 @@
 	"packageManager": "pnpm@9.4.0",
 	"engines": {
 		"pnpm": ">=9.4.0",
-		"node": "20.9.0"
+		"node": "20.x"
 	},
 	"scripts": {
 		"dev": "pnpm --filter @saleor/* dev",
