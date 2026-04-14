@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useCheckoutComplete } from '@/checkout/hooks/useCheckoutComplete';
 import { useCheckout } from '@/checkout/hooks/useCheckout';
 import {
+	type CountryCode,
 	useCheckoutBillingAddressUpdateMutation,
 	useCheckoutDeliveryMethodUpdateMutation,
 	useCheckoutEmailUpdateMutation,
@@ -82,7 +83,7 @@ export default function PlaceOrderModal({
 				lastName,
 				streetAddress1: 'SM Retail Corporate Office, J.W. Diokno Blvd. cor. Bayshore Ave.',
 				city: 'Pasay City',
-				country: 'PH',
+				country: 'PH' as CountryCode,
 				postalCode: '1300',
 				phone: '+639171234567',
 			};
