@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useCheckoutComplete } from '@/checkout/hooks/useCheckoutComplete';
 import { useCheckout } from '@/checkout/hooks/useCheckout';
+import { LanguageCodeEnum } from '@saleor/shared/gql/graphql';
 import {
 	type CountryCode,
-	LanguageCodeEnum,
 	useCheckoutBillingAddressUpdateMutation,
 	useCheckoutDeliveryMethodUpdateMutation,
 	useCheckoutEmailUpdateMutation,
@@ -125,7 +125,7 @@ export default function PlaceOrderModal({
 				const deliveryResult = await updateDeliveryMethod({
 					checkoutId: checkout.id,
 					deliveryMethodId: defaultMethodId,
-					languageCode: LanguageCodeEnum.EN_US,
+					languageCode: LanguageCodeEnum.EnUs,
 				});
 				const deliveryErrors = deliveryResult.data?.checkoutDeliveryMethodUpdate?.errors ?? [];
 				if (deliveryErrors.length > 0) {
@@ -178,20 +178,20 @@ export default function PlaceOrderModal({
 						/>
 					</div>
 
-						<div>
-							<label className="block text-sm font-medium text-slate-700 mb-2">
-								Email
-							</label>
-							<input
-								type="email"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-								placeholder="customer@example.com"
-								className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
-								disabled={isSubmitting}
-								required
-							/>
-						</div>
+					<div>
+						<label className="block text-sm font-medium text-slate-700 mb-2">
+							Email
+						</label>
+						<input
+							type="email"
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
+							placeholder="customer@example.com"
+							className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+							disabled={isSubmitting}
+							required
+						/>
+					</div>
 
 					{/* Pickup Time */}
 					<div>
