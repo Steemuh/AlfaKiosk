@@ -237,4 +237,4 @@ export default async function Page(props: { params: Promise<{ channel: string }>
 			</div>
 		);
 	}
-}
+// } just uncomment this
