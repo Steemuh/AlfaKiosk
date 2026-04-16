@@ -25,7 +25,7 @@ export default function CashierDashboard() {
 	return (
 		<div style={{ padding: 40, color: "white", background: "#0f172a", minHeight: "100vh" }}>
 			<h1>CASHIER DASHBOARD IS RUNNING</h1>
-			<p>If you can see this, the route works and CashierContent is the problem.</p>
+			<p>If you can see this, the route works.</p>
 		</div>
 	);
 }
