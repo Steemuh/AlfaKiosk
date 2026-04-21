@@ -1,9 +1,26 @@
+// import "./globals.css";
+import { type ReactNode } from "react";
+import { type Metadata } from "next";
+import { CashierProvider } from "./cashier-context";
+import { CashierThemeProvider } from "./cashier-theme-context";
 
+export const metadata: Metadata = {
+ title: "Alfamart Cashier Dashboard",
+ description: "Cashier order management dashboard",
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-	return (
-		<html lang="en">
-			<body>{children}</body>
-		</html>
-	);
+export default function RootLayout(props: { children: ReactNode }) {
+ const { children } = props;
+
+ return (
+     <html lang="en" className="min-h-dvh">
+         <body className="min-h-dvh">
+             <CashierProvider>
+                 <CashierThemeProvider>
+                     {children}
+                 </CashierThemeProvider>
+             </CashierProvider>
+         </body>
+     </html>
+ );
 }
