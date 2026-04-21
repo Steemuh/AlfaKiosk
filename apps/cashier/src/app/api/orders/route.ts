@@ -147,11 +147,17 @@
 // 	});
 // }
 
+// import { NextResponse } from "next/server";
+
+// export async function GET() {
+// 	return NextResponse.json({
+// 		ok: true,
+// 		message: "cashier api route works",
+// 	});
+// }
+
 import { NextResponse } from "next/server";
 
 export async function GET() {
-	return NextResponse.json({
-		ok: true,
-		message: "cashier api route works",
-	});
+	return NextResponse.json({ ok: true });
 }

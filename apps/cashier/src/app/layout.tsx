@@ -26,13 +26,10 @@
 // }
 
 
-import "./globals.css";
-import { type ReactNode } from "react";
-
-export default function RootLayout(props: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en">
-			<body>{props.children}</body>
+			<body>{children}</body>
 		</html>
 	);
 }
