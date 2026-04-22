@@ -1,4 +1,5 @@
 import { Inter } from "next/font/google";
+// @ts-expect-error -- Global CSS side-effect import is resolved by Next.js at build time.
 import "./globals.css";
 import { type ReactNode } from "react";
 import { type Metadata } from "next";
