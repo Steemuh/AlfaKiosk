@@ -9,7 +9,7 @@ interface OrderCardProps {
 		customerName: string;
 		pickupTime: string;
 		elapsedTime: string;
-		items: number | Array<{ name: string; quantity: number; price?: number }>;
+		items?: number | Array<{ name: string; quantity: number; price?: number }>;
 		status: string;
 	};
 	onAccept: (orderId: string) => void;
@@ -30,6 +30,7 @@ export default function OrderCard({
 }: OrderCardProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const { accept = 'Accept', reject = 'Reject' } = actionLabels;
+	const items = Array.isArray(order.items) ? order.items : [];
 
 	const isNew = order.status === 'new';
 	const getPriorityColor = () => {
@@ -77,7 +78,7 @@ export default function OrderCard({
 						</div>
 						<div>
 							<span className="text-slate-500">Items:</span>
-							<div className="text-white font-semibold">{typeof order.items === 'number' ? order.items : order.items.length}</div>
+							<div className="text-white font-semibold">{typeof order.items === 'number' ? order.items : items.length}</div>
 						</div>
 					</div>
 				</div>
@@ -134,8 +135,8 @@ export default function OrderCard({
 						<div className="space-y-2">
 							{typeof order.items === 'number' ? (
 								<div className="text-white">{order.items} item(s)</div>
-							) : Array.isArray(order.items) && order.items.length > 0 ? (
-								order.items.map((item, idx) => (
+							) : items.length > 0 ? (
+								items.map((item, idx) => (
 									<div key={idx} className="flex justify-between bg-slate-700/30 p-2 rounded">
 										<div className="flex-1">
 											<div className="text-white font-medium">{item.name}</div>
