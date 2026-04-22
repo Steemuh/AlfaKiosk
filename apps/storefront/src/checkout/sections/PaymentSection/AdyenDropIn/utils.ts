@@ -1,9 +1,9 @@
-import { type CoreOptions } from "@adyen/adyen-web/dist/types/core/types";
 import {
 	type AdyenCheckoutInstanceOnAdditionalDetails,
 	type AdyenCheckoutInstanceOnSubmit,
 	type AdyenGatewayInitializePayload,
 	type ApplePayCallback,
+	type CoreOptions,
 } from "@/checkout/sections/PaymentSection/AdyenDropIn/types";
 
 interface CreateAdyenCheckoutConfigProps extends AdyenGatewayInitializePayload {

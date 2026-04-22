@@ -7,7 +7,6 @@ import {
 	useAdyenDropin,
 } from "@/checkout/sections/PaymentSection/AdyenDropIn/useAdyenDropin";
 import "@adyen/adyen-web/dist/adyen.css";
-import { type AdyenGatewayInitializePayload } from "@/checkout/sections/PaymentSection/AdyenDropIn/types";
 
 type AdyenCheckoutInstance = Awaited<ReturnType<typeof AdyenCheckout>>;
 
@@ -22,10 +21,14 @@ export const AdyenDropIn: FC<AdyenDropinProps> = ({ config }) => {
 	const dropinComponentRef = useRef<DropinElement | null>(null);
 
 	const createAdyenCheckoutInstance = useCallback(
-		async (container: HTMLDivElement, data: AdyenGatewayInitializePayload) => {
-			const adyenCheckout = await AdyenCheckout(
-				createAdyenCheckoutConfig({ ...data, onSubmit, onAdditionalDetails }),
-			);
+		async (container: HTMLDivElement, data: Record<string, any>) => {
+			const checkoutConfig = createAdyenCheckoutConfig({
+	...data,
+	onSubmit,
+	onAdditionalDetails,
+} as any) as any;
+
+const adyenCheckout = await AdyenCheckout(checkoutConfig);
 
 			dropinComponentRef.current?.unmount();
 
@@ -38,9 +41,12 @@ export const AdyenDropIn: FC<AdyenDropinProps> = ({ config }) => {
 
 	useEffect(() => {
 		if (dropinContainerElRef.current && !dropinComponentRef.current) {
-			void createAdyenCheckoutInstance(dropinContainerElRef.current, config.data);
+			void createAdyenCheckoutInstance(
+				dropinContainerElRef.current,
+				config.data as Record<string, any>,
+			);
 		}
-	}, []);
+	}, [config.data, createAdyenCheckoutInstance]);
 
 	return <div ref={dropinContainerElRef} />;
 };

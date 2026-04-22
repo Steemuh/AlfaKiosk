@@ -1,4 +1,4 @@
-import type DropinElement from "@adyen/adyen-web/dist/types/components/Dropin";
+import type { DropinElement } from "./types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { camelCase } from "lodash-es";
 import { apiErrorMessages } from "../errorMessages";
@@ -98,22 +98,22 @@ export const useAdyenDropin = (props: AdyenDropinProps) => {
 			}
 
 			if (action) {
-				adyenCheckoutSubmitParams?.component.handleAction(action);
+				adyenCheckoutSubmitParams?.component?.handleAction?.(action);
 			}
 
 			switch (resultCode) {
 				case "Authorised":
-					adyenCheckoutSubmitParams?.component.setStatus("success");
+					adyenCheckoutSubmitParams?.component?.setStatus?.("success");
 					void onCheckoutComplete();
 					return;
 				case "Error":
-					adyenCheckoutSubmitParams?.component.setStatus("error");
+					adyenCheckoutSubmitParams?.component?.setStatus?.("error");
 					showCustomErrors([{ message: "There was an error processing your payment." }]);
 					return;
 				case "Refused":
 					setCurrentTransactionId(undefined);
 
-					adyenCheckoutSubmitParams?.component.setStatus("ready");
+					adyenCheckoutSubmitParams?.component?.setStatus?.("ready");
 
 					const messageKey = camelCase(paymentResponse.refusalReason);
 
@@ -140,7 +140,7 @@ export const useAdyenDropin = (props: AdyenDropinProps) => {
 				onSubmit: transactionInitialize,
 				onError: () => {
 					showCustomErrors([{ message: commonErrorMessages.somethingWentWrong }]);
-					adyenCheckoutSubmitParams?.component.setStatus("ready");
+					adyenCheckoutSubmitParams?.component?.setStatus?.("ready");
 				},
 				extractCustomErrors: (result) => result?.data?.transactionInitialize?.data?.errors,
 				onSuccess: async ({ data }) => {
@@ -185,7 +185,7 @@ export const useAdyenDropin = (props: AdyenDropinProps) => {
 					setCurrentTransactionId(null);
 
 					showCustomErrors([{ message: commonErrorMessages.somethingWentWrong }]);
-					adyenCheckoutSubmitParams?.component.setStatus("ready");
+					adyenCheckoutSubmitParams?.component?.setStatus?.("ready");
 				},
 				extractCustomErrors: (result) => result?.data?.transactionProcess?.data?.errors,
 				onSuccess: ({ data }) => {
@@ -223,7 +223,7 @@ export const useAdyenDropin = (props: AdyenDropinProps) => {
 
 	// handler for when user presses submit in the dropin
 	const onSubmitInitialize: AdyenCheckoutInstanceOnSubmit = useEvent(async (state, component) => {
-		component.setStatus("loading");
+		component?.setStatus?.("loading");
 		setAdyenCheckoutSubmitParams({ state, component });
 		validateAllForms(authenticated);
 		setShouldRegisterUser(true);
@@ -246,11 +246,11 @@ export const useAdyenDropin = (props: AdyenDropinProps) => {
 		// there was en error either in some other request or form validation
 		// - stop the submission altogether
 		if (!finishedApiChangesWithNoError || !allFormsValid) {
-			adyenCheckoutSubmitParams?.component.setStatus("ready");
+			adyenCheckoutSubmitParams?.component?.setStatus?.("ready");
 			return;
 		}
 
-		adyenCheckoutSubmitParams.component.setStatus("loading");
+		adyenCheckoutSubmitParams?.component?.setStatus?.("loading");
 
 		// there is a previous transaction going on, we want to process instead of initialize
 		if (currentTransactionId) {
@@ -290,7 +290,7 @@ export const useAdyenDropin = (props: AdyenDropinProps) => {
 	const onAdditionalDetails: AdyenCheckoutInstanceOnAdditionalDetails = useEvent(async (state, component) => {
 		setAdyenCheckoutSubmitParams({ state, component });
 		if (currentTransactionId) {
-			adyenCheckoutSubmitParams?.component?.setStatus("loading");
+			adyenCheckoutSubmitParams?.component?.setStatus?.("loading");
 			setSubmitInProgress(true);
 		}
 	});
