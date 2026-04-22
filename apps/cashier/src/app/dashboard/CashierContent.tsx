@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useCashierRole } from '../cashier-context';
 import { useCashierTheme } from '../cashier-theme-context';
 import { useRouter } from 'next/navigation';
-import { useOrderStore } from '@saleor/shared/lib/orderStore';
 import IncomingOrdersTab from '@/components/tabs/IncomingOrdersTab';
 import PreparingOrdersTab from '@/components/tabs/PreparingOrdersTab';
 import ReadyForPickupTab from '@/components/tabs/ReadyForPickupTab';
@@ -15,9 +15,9 @@ type TabType = 'incoming' | 'preparing' | 'ready';
 type PageType = 'orders' | 'statistics' | 'inventory' | 'store-status';
 
 export default function CashierContent() {
+	const { isCashier } = useCashierRole();
 	const { theme, toggleTheme } = useCashierTheme();
 	const router = useRouter();
-	const { setOrders } = useOrderStore();
 	const [activeTab, setActiveTab] = useState<TabType>('incoming');
 	const [currentPage, setCurrentPage] = useState<PageType>('orders');
 	const [showMenu, setShowMenu] = useState(false);
@@ -28,40 +28,17 @@ export default function CashierContent() {
 	}, []);
 
 	useEffect(() => {
-		if (!mounted) {
-			return;
+		if (mounted && !isCashier) {
+			router.push('/');
 		}
+	}, [mounted, isCashier, router]);
 
-		let isActive = true;
-		const fetchOrders = async () => {
-			try {
-				const response = await fetch('/api/orders');
-				if (!response.ok) {
-					return;
-				}
-				const data = await response.json();
-				if (isActive && Array.isArray(data.orders)) {
-					setOrders(data.orders);
-				}
-			} catch {
-				// Keep UI responsive even if the fetch fails.
-			}
-		};
-
-		fetchOrders();
-		const intervalId = setInterval(fetchOrders, 10000);
-
-		return () => {
-			isActive = false;
-			clearInterval(intervalId);
-		};
-	}, [mounted, setOrders]);
-
-	if (!mounted) {
+	if (!mounted || !isCashier) {
 		return null;
 	}
 
 	const handleSwitchRole = () => {
+		localStorage.removeItem('userRole');
 		router.push('/');
 	};
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 interface CashierContextType {
 	role: 'cashier' | 'customer' | null;
@@ -11,10 +11,19 @@ interface CashierContextType {
 const CashierContext = createContext<CashierContextType | undefined>(undefined);
 
 export function CashierProvider({ children }: { children: ReactNode }) {
-	const [role, setRoleState] = useState<'cashier' | 'customer' | null>('cashier');
+	const [role, setRoleState] = useState<'cashier' | 'customer' | null>(null);
+
+	useEffect(() => {
+		// Load role from localStorage on mount
+		const savedRole = localStorage.getItem('userRole') as 'cashier' | 'customer' | null;
+		if (savedRole) {
+			setRoleState(savedRole);
+		}
+	}, []);
 
 	const setRole = (newRole: 'cashier' | 'customer') => {
 		setRoleState(newRole);
+		localStorage.setItem('userRole', newRole);
 	};
 
 	return (
