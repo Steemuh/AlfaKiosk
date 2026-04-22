@@ -45,10 +45,15 @@ export const useOrderStore = create<OrderStore>()(
 			},
 
 			setOrders: (orders) => {
+				const safeOrders = Array.isArray(orders) ? orders : [];
+				if (!Array.isArray(orders)) {
+					console.warn('[orderStore] setOrders received non-array input, using empty array fallback.');
+				}
+
 				set((state) => {
 					const orderMap = new Map(state.orders.map((order) => [order.id, order]));
 
-					orders.forEach((order) => {
+					safeOrders.forEach((order) => {
 						const existing = orderMap.get(order.id);
 						
 						// If order exists locally, preserve its status to prevent reverting
