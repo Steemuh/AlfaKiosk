@@ -51,9 +51,7 @@ export default function OrderCard({
 
 	return (
 		<div
-			className={`border-2 rounded-lg p-3 sm:p-5 transition-all cursor-pointer hover:shadow-lg ${getPriorityColor()} ${
-				isNew ? 'animate-pulse' : ''
-			}`}
+			className={`border-2 rounded-lg p-3 sm:p-5 transition-all cursor-pointer hover:shadow-lg ${getPriorityColor()}`}
 			onClick={() => setIsExpanded(!isExpanded)}
 		>
 			<div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-2 sm:gap-4">

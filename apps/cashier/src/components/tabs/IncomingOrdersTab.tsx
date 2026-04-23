@@ -4,9 +4,23 @@ import { useState, useEffect } from 'react';
 import { useOrderStore } from '@saleor/shared/lib/orderStore';
 import OrderCard from '@/components/OrderCard';
 
+const PREDEFINED_REJECTION_REASONS = [
+	'Item is out of stock',
+	'Product unavailable',
+	'Order exceeded preparation capacity',
+	'Incorrect or incomplete order details',
+	'Unable to fulfill the order at this time',
+] as const;
+
+const OTHER_REASON_VALUE = 'Others';
+
 export default function IncomingOrdersTab({ theme = 'dark' }: { theme?: 'light' | 'dark' }) {
-	const { getOrdersByStatus, updateOrderStatus, orders } = useOrderStore();
+	const { getOrdersByStatus, updateOrderStatus, addOrderListEntry, orders } = useOrderStore();
 	const [mounted, setMounted] = useState(false);
+	const [showRejectModal, setShowRejectModal] = useState(false);
+	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+	const [selectedReason, setSelectedReason] = useState<string>('');
+	const [customReason, setCustomReason] = useState('');
 
 	useEffect(() => {
 		setMounted(true);
@@ -19,11 +33,63 @@ export default function IncomingOrdersTab({ theme = 'dark' }: { theme?: 'light' 
 	};
 
 	const handleRejectOrder = (orderId: string) => {
-		// Remove from incoming (find the order and mark as rejected or delete)
-		const order = orders.find(o => o.id === orderId);
-		if (order) {
-			updateOrderStatus(orderId, 'incoming');
+		setSelectedOrderId(orderId);
+		setSelectedReason('');
+		setCustomReason('');
+		setShowRejectModal(true);
+	};
+
+	const getFinalRejectionReason = () => {
+		if (!selectedReason) {
+			return '';
 		}
+
+		if (selectedReason === OTHER_REASON_VALUE) {
+			return customReason.trim();
+		}
+
+		return selectedReason;
+	};
+
+	const isRejectReasonValid = getFinalRejectionReason().length > 0;
+
+	const handleConfirmReject = () => {
+		if (!selectedOrderId) {
+			return;
+		}
+
+		if (!selectedReason) {
+			alert('Please select a rejection reason.');
+			return;
+		}
+
+		const finalReason = getFinalRejectionReason();
+		if (selectedReason === OTHER_REASON_VALUE && finalReason.length === 0) {
+			alert('Please enter a custom rejection reason.');
+			return;
+		}
+
+		const order = orders.find((o) => o.id === selectedOrderId);
+		if (!order) {
+			setShowRejectModal(false);
+			setSelectedOrderId(null);
+			return;
+		}
+
+		updateOrderStatus(selectedOrderId, 'completed');
+		addOrderListEntry({
+			orderId: order.orderId,
+			customerName: order.customerName,
+			customerEmail: order.customerEmail,
+			items: order.items,
+			action: 'rejected',
+			notes: finalReason,
+		});
+
+		setShowRejectModal(false);
+		setSelectedOrderId(null);
+		setSelectedReason('');
+		setCustomReason('');
 	};
 
 	if (!mounted) {
@@ -78,6 +144,127 @@ export default function IncomingOrdersTab({ theme = 'dark' }: { theme?: 'light' 
 					})
 				)}
 			</div>
+
+			{showRejectModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+					<div
+						className={`w-full max-w-md rounded-lg border p-5 shadow-xl ${
+							theme === 'light' ? 'border-slate-300 bg-white' : 'border-slate-700 bg-slate-800'
+						}`}
+					>
+						<h3 className={`text-lg font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+							Reject Order
+						</h3>
+						<p className={`mt-2 text-sm ${theme === 'light' ? 'text-slate-600' : 'text-slate-300'}`}>
+							Please select a rejection reason to continue.
+						</p>
+
+						<div className="mt-3 space-y-2">
+							{PREDEFINED_REJECTION_REASONS.map((reason) => {
+								const isSelected = selectedReason === reason;
+								return (
+									<label
+										key={reason}
+										className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 transition-colors ${
+											isSelected
+												? theme === 'light'
+													? 'border-emerald-400 bg-emerald-50'
+													: 'border-emerald-500 bg-emerald-900/20'
+												: theme === 'light'
+												? 'border-slate-300 bg-white hover:bg-slate-50'
+												: 'border-slate-600 bg-slate-900 hover:bg-slate-700/60'
+										}`}
+									>
+										<input
+											type="radio"
+											name="reject-reason"
+											value={reason}
+											checked={isSelected}
+											onChange={(event) => setSelectedReason(event.target.value)}
+											className="mt-1 h-4 w-4 accent-red-600"
+										/>
+										<span className={`text-sm ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`}>
+											{reason}
+										</span>
+									</label>
+								);
+							})}
+
+							<label
+								className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 transition-colors ${
+									selectedReason === OTHER_REASON_VALUE
+										? theme === 'light'
+											? 'border-emerald-400 bg-emerald-50'
+											: 'border-emerald-500 bg-emerald-900/20'
+										: theme === 'light'
+										? 'border-slate-300 bg-white hover:bg-slate-50'
+										: 'border-slate-600 bg-slate-900 hover:bg-slate-700/60'
+								}`}
+							>
+								<input
+									type="radio"
+									name="reject-reason"
+									value={OTHER_REASON_VALUE}
+									checked={selectedReason === OTHER_REASON_VALUE}
+									onChange={(event) => setSelectedReason(event.target.value)}
+									className="mt-1 h-4 w-4 accent-red-600"
+								/>
+								<span className={`text-sm font-medium ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`}>
+									Others
+								</span>
+							</label>
+						</div>
+
+						<div
+							className={`grid transition-all duration-200 ease-out ${
+								selectedReason === OTHER_REASON_VALUE ? 'mt-3 grid-rows-[1fr] opacity-100' : 'mt-0 grid-rows-[0fr] opacity-0'
+							}`}
+						>
+							<div className="overflow-hidden">
+								<textarea
+									value={customReason}
+									onChange={(event) => setCustomReason(event.target.value)}
+									rows={3}
+									placeholder="Enter custom rejection reason"
+									className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${
+										theme === 'light'
+											? 'border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-emerald-500'
+											: 'border-slate-600 bg-slate-900 text-white focus:ring-2 focus:ring-emerald-500'
+									}`}
+								/>
+							</div>
+						</div>
+						<div className="mt-4 flex gap-3">
+							<button
+								onClick={() => {
+									setShowRejectModal(false);
+									setSelectedOrderId(null);
+									setSelectedReason('');
+									setCustomReason('');
+								}}
+								className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+									theme === 'light'
+										? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+										: 'bg-slate-700 text-white hover:bg-slate-600'
+								}`}
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleConfirmReject}
+								disabled={!isRejectReasonValid}
+								className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
+									isRejectReasonValid
+										? 'bg-red-600 hover:bg-red-700'
+										: 'cursor-not-allowed bg-red-400/70'
+								}`}
+							>
+								Confirm Reject
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

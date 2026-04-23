@@ -8,7 +8,7 @@ import { PaymentSection, PaymentSectionSkeleton } from "@/checkout/sections/Paym
  * No user authentication, addresses, or shipping required
  * Summary is displayed on the right side, this component handles payment selection
  */
-export const KioskCheckoutForm = () => {
+export const KioskCheckoutForm = ({ storeOpen = true }: { storeOpen?: boolean }) => {
 	const { checkout } = useCheckout();
 
 	if (!checkout) {
@@ -22,6 +22,14 @@ export const KioskCheckoutForm = () => {
 	return (
 		<div className="flex flex-col items-end">
 			<div className="flex w-full flex-col rounded">
+				{/* Show message if store is closed */}
+				{!storeOpen && (
+					<div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+						<p className="font-semibold">⚠️ Store is Closed</p>
+						<p className="text-sm mt-1">We're not accepting orders right now. Please come back when we're open.</p>
+					</div>
+				)}
+				
 				{/* Payment section - select payment method */}
 				<Suspense fallback={<PaymentSectionSkeleton />}>
 					<PaymentSection />

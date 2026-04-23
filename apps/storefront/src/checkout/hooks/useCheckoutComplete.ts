@@ -12,14 +12,14 @@ export const useCheckoutComplete = () => {
 	const [{ fetching }, checkoutComplete] = useCheckoutCompleteMutation();
 	const addOrder = useOrderStore((state) => state.addOrder);
 
-	const onCheckoutComplete = useSubmit<{}, typeof checkoutComplete>(
+	const onCheckoutComplete = useSubmit<{ customerEmail?: string }, typeof checkoutComplete>(
 		useMemo(
 			() => ({
 				parse: () => ({
 					checkoutId,
 				}),
 				onSubmit: checkoutComplete,
-				onSuccess: ({ data }) => {
+				onSuccess: ({ data, formData }) => {
 					const order = data.order;
 
 					if (order) {
@@ -41,6 +41,7 @@ export const useCheckoutComplete = () => {
 						addOrder({
 							orderId: orderNumber,
 							customerName,
+							customerEmail: formData.customerEmail,
 							pickupTime: new Date(Date.now() + 45 * 60 * 1000).toTimeString().slice(0, 5),
 							items,
 							status: 'new',

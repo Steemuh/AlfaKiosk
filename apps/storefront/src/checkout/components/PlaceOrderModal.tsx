@@ -89,20 +89,18 @@ export default function PlaceOrderModal({
 				phone: '+639171234567',
 			};
 
-			if (!checkout.billingAddress) {
-				const billingResult = await updateBillingAddress({
-					checkoutId: checkout.id,
-					billingAddress,
-					languageCode: 'EN_US',
-				});
-				const billingErrors = billingResult.data?.checkoutBillingAddressUpdate?.errors ?? [];
-				if (billingErrors.length > 0) {
-					alert(billingErrors.map((error) => error.message).filter(Boolean).join('\n') || 'Failed to set billing address.');
-					return;
-				}
+			const billingResult = await updateBillingAddress({
+				checkoutId: checkout.id,
+				billingAddress,
+				languageCode: 'EN_US',
+			});
+			const billingErrors = billingResult.data?.checkoutBillingAddressUpdate?.errors ?? [];
+			if (billingErrors.length > 0) {
+				alert(billingErrors.map((error) => error.message).filter(Boolean).join('\n') || 'Failed to set billing address.');
+				return;
 			}
 
-			if (checkout.isShippingRequired && !checkout.shippingAddress) {
+			if (checkout.isShippingRequired) {
 				const shippingResult = await updateShippingAddress({
 					checkoutId: checkout.id,
 					shippingAddress: billingAddress,
@@ -134,7 +132,7 @@ export default function PlaceOrderModal({
 				}
 			}
 
-			const result = await onCheckoutComplete();
+			const result = await onCheckoutComplete({ customerEmail: email.trim() });
 			if (result?.hasErrors) {
 				const apiMessages = result.apiErrors?.map((error) => error.message).filter(Boolean) ?? [];
 				const gqlMessages = result.graphqlErrors?.map((error) => error.message).filter(Boolean) ?? [];

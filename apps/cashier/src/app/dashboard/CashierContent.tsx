@@ -10,9 +10,10 @@ import ReadyForPickupTab from '@/components/tabs/ReadyForPickupTab';
 import StatisticsPage from '@/components/pages/StatisticsPage';
 import InventoryPage from '@/components/pages/InventoryPage';
 import StoreStatusPage from '@/components/pages/StoreStatusPage';
+import OrderListsPage from '@/components/pages/OrderListsPage';
 
 type TabType = 'incoming' | 'preparing' | 'ready';
-type PageType = 'orders' | 'statistics' | 'inventory' | 'store-status';
+type PageType = 'orders' | 'order-lists' | 'statistics' | 'inventory' | 'store-status';
 
 type SaleorOrderStatus =
     | 'UNCONFIRMED'
@@ -79,7 +80,11 @@ function mapSaleorOrderToCashierOrder(rawOrder: unknown, index: number): Order {
     const fallbackId = `unknown-order-${index}`;
     const id = asNonEmptyString(raw.id) ?? asNonEmptyString(raw.number) ?? fallbackId;
     const orderId = asNonEmptyString(raw.number) ?? id;
-    const customerName = asNonEmptyString(raw.userEmail) ?? 'Walk-in Customer';
+    const billingAddress = (raw.billingAddress ?? {}) as Record<string, unknown>;
+    const firstName = asNonEmptyString(billingAddress.firstName);
+    const lastName = asNonEmptyString(billingAddress.lastName);
+    const customerNameFromBilling = [firstName, lastName].filter(Boolean).join(' ').trim();
+    const customerName = customerNameFromBilling || asNonEmptyString(raw.userEmail) || 'Walk-in Customer';
     const createdRaw = asNonEmptyString(raw.created);
     const createdAt = createdRaw ? new Date(createdRaw).getTime() : Date.now();
     const rawLines = Array.isArray(raw.lines) ? raw.lines : [];
@@ -88,6 +93,7 @@ function mapSaleorOrderToCashierOrder(rawOrder: unknown, index: number): Order {
         id,
         orderId,
         customerName,
+        customerEmail: asNonEmptyString(raw.userEmail) ?? undefined,
         pickupTime: 'ASAP',
         items: rawLines.map(mapSaleorLineToOrderItem),
         status: mapSaleorStatusToCashierStatus(raw.status),
@@ -221,12 +227,14 @@ export default function CashierContent() {
                         <div className="min-w-0">
                             <h1 className={`text-lg sm:text-2xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'} truncate`}>
                                 {currentPage === 'orders' && 'Store Fulfillment'}
+                                {currentPage === 'order-lists' && 'Order Lists'}
                                 {currentPage === 'statistics' && 'Statistics'}
                                 {currentPage === 'inventory' && 'Inventory'}
                                 {currentPage === 'store-status' && 'Store Status'}
                             </h1>
                             <p className={`text-xs sm:text-sm hidden sm:block ${theme === 'light' ? 'text-emerald-600' : 'text-emerald-400'}`}>
                                 {currentPage === 'orders' && 'Order Management System'}
+                                {currentPage === 'order-lists' && 'Rejected and handed-over log'}
                                 {currentPage === 'statistics' && 'Performance Dashboard'}
                                 {currentPage === 'inventory' && 'Stock Management'}
                                 {currentPage === 'store-status' && 'System Monitoring'}
@@ -235,26 +243,6 @@ export default function CashierContent() {
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                        <button
-                            onClick={toggleTheme}
-                            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-                            className={`p-2 rounded-lg transition-colors ${
-                                theme === 'light'
-                                    ? 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300'
-                                    : 'bg-slate-700 hover:bg-slate-600 text-yellow-400'
-                            }`}
-                        >
-                            {theme === 'light' ? (
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.536l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.121-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM5.464 5.464a1 1 0 000 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 0zM5 11a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" />
-                                </svg>
-                            )}
-                        </button>
-
                         <button
                             onClick={handleSwitchRole}
                             className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors text-xs sm:text-sm font-medium flex-shrink-0 ${
@@ -293,6 +281,28 @@ export default function CashierContent() {
                                     <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 6a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zm8-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-6a1 1 0 01-1-1v-6a1 1 0 011-1z" />
                                 </svg>
                                 Orders
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                setCurrentPage('order-lists');
+                                setShowMenu(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                                currentPage === 'order-lists'
+                                    ? theme === 'light'
+                                        ? 'bg-emerald-100 text-emerald-900'
+                                        : 'bg-emerald-900/30 text-emerald-300'
+                                    : theme === 'light'
+                                    ? 'hover:bg-slate-100 text-slate-700'
+                                    : 'hover:bg-slate-700 text-slate-300'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M4 3a1 1 0 000 2h12a1 1 0 100-2H4zm0 5a1 1 0 000 2h12a1 1 0 100-2H4zm0 5a1 1 0 100 2h8a1 1 0 100-2H4z" />
+                                </svg>
+                                Order Lists
                             </span>
                         </button>
                         <button
@@ -361,6 +371,18 @@ export default function CashierContent() {
                                 Store Status
                             </span>
                         </button>
+                        <div className={`mt-2 rounded-lg border p-2 ${theme === 'light' ? 'border-slate-300' : 'border-slate-700'}`}>
+                            <button
+                                onClick={toggleTheme}
+                                className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+                                    theme === 'light'
+                                        ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                                        : 'bg-slate-700 text-slate-100 hover:bg-slate-600'
+                                }`}
+                            >
+                                {theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -430,6 +452,7 @@ export default function CashierContent() {
                 {currentPage === 'statistics' && <StatisticsPage theme={theme} />}
                 {currentPage === 'inventory' && <InventoryPage theme={theme} />}
                 {currentPage === 'store-status' && <StoreStatusPage theme={theme} />}
+                {currentPage === 'order-lists' && <OrderListsPage theme={theme} />}
             </div>
         </div>
     );

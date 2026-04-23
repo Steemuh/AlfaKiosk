@@ -12,7 +12,7 @@ import PlaceOrderButton from "@/checkout/components/PlaceOrderButton";
 /**
  * Simplified Checkout for food kiosk - removes user authentication complexity
  */
-export const Checkout = () => {
+export const Checkout = ({ storeOpen = true }: { storeOpen?: boolean }) => {
 	const { checkout, fetching: fetchingCheckout } = useCheckout();
 
 	const isCheckoutInvalid = !fetchingCheckout && !checkout;
@@ -43,12 +43,12 @@ export const Checkout = () => {
 						</Suspense>
 						
 						<Suspense fallback={<CheckoutSkeleton />}>
-							<KioskCheckoutForm />
+							<KioskCheckoutForm storeOpen={storeOpen} />
 						</Suspense>
 
-						<PlaceOrderButton />
+						<PlaceOrderButton storeOpen={storeOpen} />
 						
-						<ProceedButton onClick={handleProceedPayment} disabled={!checkout?.lines.length} />
+						<ProceedButton onClick={handleProceedPayment} disabled={!checkout?.lines.length || !storeOpen} />
 					</div>
 				)}
 			</div>

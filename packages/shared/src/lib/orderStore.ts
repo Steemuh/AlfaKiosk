@@ -11,6 +11,7 @@ export interface Order {
 	id: string;
 	orderId: string;
 	customerName: string;
+	customerEmail?: string;
 	pickupTime: string;
 	items: OrderItem[];
 	status: 'new' | 'incoming' | 'preparing' | 'ready' | 'completed';
@@ -18,11 +19,26 @@ export interface Order {
 	totalPrice: number;
 }
 
+export interface OrderListEntry {
+	id: string;
+	orderId: string;
+	customerName: string;
+	customerEmail?: string;
+	items?: OrderItem[];
+	action: 'rejected' | 'handed-over';
+	timestamp: number;
+	notes?: string;
+}
+
 interface OrderStore {
 	orders: Order[];
+	orderList: OrderListEntry[];
 	addOrder: (order: Omit<Order, 'id' | 'createdAt'>) => void;
 	setOrders: (orders: Order[]) => void;
+	replaceOrders: (orders: Order[]) => void;
 	updateOrderStatus: (orderId: string, status: Order['status']) => void;
+	addOrderListEntry: (entry: Omit<OrderListEntry, 'id' | 'timestamp'> & { timestamp?: number }) => void;
+	clearOrderList: () => void;
 	removeOrder: (orderId: string) => void;
 	getOrdersByStatus: (status: Order['status']) => Order[];
 	getAllOrders: () => Order[];
@@ -32,6 +48,7 @@ export const useOrderStore = create<OrderStore>()(
 	persist(
 		(set, get) => ({
 			orders: [],
+			orderList: [],
 
 			addOrder: (order) => {
 				const newOrder: Order = {
@@ -74,12 +91,41 @@ export const useOrderStore = create<OrderStore>()(
 				});
 			},
 
+			replaceOrders: (orders) => {
+				const safeOrders = Array.isArray(orders) ? orders : [];
+				if (!Array.isArray(orders)) {
+					console.warn('[orderStore] replaceOrders received non-array input, using empty array fallback.');
+				}
+
+				set(() => ({
+					orders: [...safeOrders].sort((a, b) => b.createdAt - a.createdAt),
+				}));
+			},
+
 			updateOrderStatus: (orderId, status) => {
 				set((state) => ({
 					orders: state.orders.map((order) =>
 						order.id === orderId ? { ...order, status } : order
 					),
 				}));
+			},
+
+			addOrderListEntry: (entry) => {
+				const eventTimestamp = typeof entry.timestamp === 'number' ? entry.timestamp : Date.now();
+				set((state) => ({
+					orderList: [
+						{
+							...entry,
+							id: Math.random().toString(36).substring(2, 11),
+							timestamp: eventTimestamp,
+						},
+						...state.orderList,
+					],
+				}));
+			},
+
+			clearOrderList: () => {
+				set({ orderList: [] });
 			},
 
 			removeOrder: (orderId) => {

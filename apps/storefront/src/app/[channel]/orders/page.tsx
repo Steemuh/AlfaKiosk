@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Clock, CheckCircle, Loader2, Bell } from "lucide-react";
 import { useOrderStore, type Order } from "@saleor/shared/lib/orderStore";
 
 export default function OrdersPage() {
 	const [mounted, setMounted] = useState(false);
+	const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+	const [statusNotices, setStatusNotices] = useState<string[]>([]);
 	const orders = useOrderStore((state) => state.orders);
+	const removeOrder = useOrderStore((state) => state.removeOrder);
+	const replaceOrders = useOrderStore((state) => state.replaceOrders);
+	const previousStatusesRef = useRef<Record<string, Order["status"]>>({});
+
+	const selectableOrders = useMemo(
+		() => orders.filter((order) => order.status !== "completed"),
+		[orders]
+	);
 
 	useEffect(() => {
 		setMounted(true);
@@ -25,7 +35,88 @@ export default function OrdersPage() {
 			);
 			store.setOrders(validOrders);
 		}
+
+		const onStorage = (event: StorageEvent) => {
+			if (event.key !== "order-store" || !event.newValue) {
+				return;
+			}
+
+			try {
+				const parsed = JSON.parse(event.newValue) as {
+					state?: { orders?: Order[] };
+				};
+				const externalOrders = parsed?.state?.orders;
+				if (Array.isArray(externalOrders)) {
+					replaceOrders(externalOrders);
+				}
+			} catch (error) {
+				console.warn("Unable to sync orders from storage event", error);
+			}
+		};
+
+		window.addEventListener("storage", onStorage);
+		return () => {
+			window.removeEventListener("storage", onStorage);
+		};
 	}, []);
+
+	useEffect(() => {
+		const previous = previousStatusesRef.current;
+		const notices: string[] = [];
+
+		for (const order of orders) {
+			const prevStatus = previous[order.id];
+			if (
+				(prevStatus === "new" || prevStatus === "incoming") &&
+				order.status === "preparing"
+			) {
+				notices.push(`Order #${order.orderId} was received by the cashier.`);
+			}
+		}
+
+		if (notices.length > 0) {
+			setStatusNotices((current) => [...notices, ...current].slice(0, 3));
+		}
+
+		previousStatusesRef.current = orders.reduce<Record<string, Order["status"]>>((acc, order) => {
+			acc[order.id] = order.status;
+			return acc;
+		}, {});
+	}, [orders]);
+
+	useEffect(() => {
+		if (statusNotices.length === 0) {
+			return;
+		}
+
+		const timer = window.setTimeout(() => {
+			setStatusNotices((current) => current.slice(0, -1));
+		}, 5000);
+
+		return () => {
+			window.clearTimeout(timer);
+		};
+	}, [statusNotices]);
+
+	const toggleSelection = (orderId: string) => {
+		setSelectedOrderIds((current) =>
+			current.includes(orderId)
+				? current.filter((id) => id !== orderId)
+				: [...current, orderId]
+		);
+	};
+
+	const handleDeleteSelected = () => {
+		if (selectedOrderIds.length === 0) {
+			return;
+		}
+
+		for (const orderId of selectedOrderIds) {
+			removeOrder(orderId);
+		}
+
+		setSelectedOrderIds([]);
+	};
 
 	if (!mounted) {
 		return (
@@ -42,14 +133,14 @@ export default function OrdersPage() {
 				return (
 					<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
 						<Clock className="h-3 w-3" />
-						Order Received
+						Awaiting Confirmation
 					</span>
 				);
 			case "preparing":
 				return (
-					<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-						<Loader2 className="h-3 w-3 animate-spin" />
-						Preparing
+					<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+						<CheckCircle className="h-3 w-3" />
+						Order Received
 					</span>
 				);
 			case "ready":
@@ -77,6 +168,16 @@ export default function OrdersPage() {
 	return (
 		<div className="min-h-[calc(100vh-12rem)] px-4 py-6 pb-24">
 			<div className="max-w-2xl mx-auto">
+				{statusNotices.length > 0 && (
+					<div className="mb-4 space-y-2">
+						{statusNotices.map((notice, index) => (
+							<div key={`${notice}-${index}`} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+								{notice}
+							</div>
+						))}
+					</div>
+				)}
+
 				{/* Header */}
 				<div className="flex items-center gap-3 mb-6">
 					<div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
@@ -87,6 +188,23 @@ export default function OrdersPage() {
 						<p className="text-sm text-neutral-500">View your order history and status</p>
 					</div>
 				</div>
+
+				{selectableOrders.length > 0 && (
+					<div className="mb-4 flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-3">
+						<p className="text-sm text-neutral-600">
+							{selectedOrderIds.length === 0
+								? "Select orders to remove old entries"
+								: `${selectedOrderIds.length} selected`}
+						</p>
+						<button
+							onClick={handleDeleteSelected}
+							disabled={selectedOrderIds.length === 0}
+							className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-neutral-300"
+						>
+							Delete Selected
+						</button>
+					</div>
+				)}
 
 				{/* Orders List */}
 				{orders.length === 0 ? (
@@ -108,6 +226,18 @@ export default function OrdersPage() {
 									order.status === "ready" ? "border-green-300 bg-green-50" : "border-neutral-200"
 								}`}
 							>
+								<div className="mb-3 flex items-center justify-end">
+									<label className="inline-flex items-center gap-2 text-xs text-neutral-500">
+										<input
+											type="checkbox"
+											checked={selectedOrderIds.includes(order.id)}
+											onChange={() => toggleSelection(order.id)}
+											className="h-4 w-4 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
+										/>
+										Select
+									</label>
+								</div>
+
 								{/* Order Header */}
 								<div className="flex items-start justify-between mb-3">
 									<div>

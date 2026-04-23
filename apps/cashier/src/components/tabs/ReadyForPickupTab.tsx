@@ -5,8 +5,10 @@ import { useOrderStore } from '@saleor/shared/lib/orderStore';
 import OrderCard from '@/components/OrderCard';
 
 export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' | 'dark' }) {
-	const { getOrdersByStatus, updateOrderStatus } = useOrderStore();
+	const { getOrdersByStatus, updateOrderStatus, addOrderListEntry, orders } = useOrderStore();
 	const [mounted, setMounted] = useState(false);
+	const [showHandOverModal, setShowHandOverModal] = useState(false);
+	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
 	useEffect(() => {
 		setMounted(true);
@@ -15,8 +17,33 @@ export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' 
 	const readyOrders = getOrdersByStatus('ready');
 
 	const handleMarkPickedUp = (orderId: string) => {
-		// Mark as completed instead of removing, so it won't reappear from API
-		updateOrderStatus(orderId, 'completed');
+		setSelectedOrderId(orderId);
+		setShowHandOverModal(true);
+	};
+
+	const handleConfirmHandedOver = () => {
+		if (!selectedOrderId) {
+			return;
+		}
+
+		const order = orders.find((o) => o.id === selectedOrderId);
+		if (!order) {
+			setShowHandOverModal(false);
+			setSelectedOrderId(null);
+			return;
+		}
+
+		updateOrderStatus(selectedOrderId, 'completed');
+		addOrderListEntry({
+			orderId: order.orderId,
+			customerName: order.customerName,
+			customerEmail: order.customerEmail,
+			items: order.items,
+			action: 'handed-over',
+		});
+
+		setShowHandOverModal(false);
+		setSelectedOrderId(null);
 	};
 
 	if (!mounted) {
@@ -74,6 +101,44 @@ export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' 
 					})
 				)}
 			</div>
+
+			{showHandOverModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+					<div
+						className={`w-full max-w-md rounded-lg border p-5 shadow-xl ${
+							theme === 'light' ? 'border-slate-300 bg-white' : 'border-slate-700 bg-slate-800'
+						}`}
+					>
+						<h3 className={`text-lg font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+							Confirm Handed Over
+						</h3>
+						<p className={`mt-2 text-sm ${theme === 'light' ? 'text-slate-600' : 'text-slate-300'}`}>
+							Are you sure this order has been handed over to the customer?
+						</p>
+						<div className="mt-4 flex gap-3">
+							<button
+								onClick={() => {
+									setShowHandOverModal(false);
+									setSelectedOrderId(null);
+								}}
+								className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+									theme === 'light'
+										? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+										: 'bg-slate-700 text-white hover:bg-slate-600'
+								}`}
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleConfirmHandedOver}
+								className="flex-1 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+							>
+								Confirm
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

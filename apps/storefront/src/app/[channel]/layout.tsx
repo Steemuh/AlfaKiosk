@@ -11,7 +11,7 @@ export default async function ChannelLayout(props: {
 
 	return (
 		<div className="min-h-dvh bg-white">
-			<Header channel={channel} />
+			<Header />
 			<div className="flex min-h-dvh flex-col pt-20 pb-20">
 				<main className="flex-1">{children}</main>
 			</div>

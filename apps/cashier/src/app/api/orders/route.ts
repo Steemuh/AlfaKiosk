@@ -29,6 +29,10 @@ const ORDERS_QUERY = /* GraphQL */ `
             }
           }
           userEmail
+          billingAddress {
+            firstName
+            lastName
+          }
           channel {
             slug
           }
@@ -60,6 +64,10 @@ type SaleorOrdersResponse = {
           created: string;
           status: string;
           userEmail: string | null;
+          billingAddress?: {
+            firstName?: string | null;
+            lastName?: string | null;
+          } | null;
           channel?: { slug?: string | null } | null;
           total?: {
             gross?: {
@@ -173,6 +181,10 @@ export async function GET() {
       created: node.created,
       status: node.status,
       userEmail: node.userEmail,
+      billingAddress: {
+        firstName: node.billingAddress?.firstName ?? null,
+        lastName: node.billingAddress?.lastName ?? null,
+      },
       channel: node.channel?.slug ?? null,
       totalAmount: node.total?.gross?.amount ?? 0,
       currency: node.total?.gross?.currency ?? "PHP",
