@@ -154,7 +154,7 @@ export function CheckoutForm() {
 				sessionStorage.removeItem("transactionId");
 				sessionStorage.removeItem("clientSecret");
 
-				await onCheckoutComplete();
+			await onCheckoutComplete({});
 			}
 
 			// Note: If Stripe requires redirect (3DS, etc.), it will redirect to the return_url

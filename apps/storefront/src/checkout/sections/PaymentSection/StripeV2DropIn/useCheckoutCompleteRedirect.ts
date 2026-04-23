@@ -84,7 +84,7 @@ export const useCheckoutCompleteRedirect = () => {
 				sessionStorage.removeItem("transactionId");
 
 				// Now complete the checkout
-				await onCheckoutComplete();
+			await onCheckoutComplete({});
 			} catch (error) {
 				console.error("Error during checkout completion:", error);
 				isProcessingRef.current = false;

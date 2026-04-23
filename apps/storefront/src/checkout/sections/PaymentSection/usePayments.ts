@@ -25,7 +25,7 @@ export const usePayments = () => {
 		}
 
 		if (!completingCheckout && paidStatuses.includes(paymentStatus)) {
-			void onCheckoutComplete();
+			void onCheckoutComplete({});
 		}
 	}, [completingCheckout, onCheckoutComplete, paymentStatus]);
 

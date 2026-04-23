@@ -104,7 +104,7 @@ export const useAdyenDropin = (props: AdyenDropinProps) => {
 			switch (resultCode) {
 				case "Authorised":
 					adyenCheckoutSubmitParams?.component?.setStatus?.("success");
-					void onCheckoutComplete();
+					void onCheckoutComplete({});
 					return;
 				case "Error":
 					adyenCheckoutSubmitParams?.component?.setStatus?.("error");
