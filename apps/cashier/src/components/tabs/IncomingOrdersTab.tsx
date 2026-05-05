@@ -14,6 +14,18 @@ const PREDEFINED_REJECTION_REASONS = [
 
 const OTHER_REASON_VALUE = 'Others';
 
+const formatElapsedTime = (minutes: number) => {
+	if (minutes < 60) {
+		return `${minutes} min ago`;
+	}
+	const hours = Math.floor(minutes / 60);
+	if (minutes < 1440) {
+		return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+	}
+	const days = Math.floor(minutes / 1440);
+	return `${days} day${days === 1 ? '' : 's'} ago`;
+};
+
 export default function IncomingOrdersTab({ theme = 'dark' }: { theme?: 'light' | 'dark' }) {
 	const { getOrdersByStatus, updateOrderStatus, addOrderListEntry, orders } = useOrderStore();
 	const [mounted, setMounted] = useState(false);
@@ -28,8 +40,42 @@ export default function IncomingOrdersTab({ theme = 'dark' }: { theme?: 'light' 
 
 	const incomingOrders = getOrdersByStatus('new').concat(getOrdersByStatus('incoming'));
 
-	const handleAcceptOrder = (orderId: string) => {
-		updateOrderStatus(orderId, 'preparing');
+	const updateOrderStatusRemote = async (orderId: string, payload: { status: string; reason?: string }) => {
+		if (!orderId) {
+			throw new Error('Missing order id');
+		}
+
+		const encodedId = encodeURIComponent(orderId);
+		const response = await fetch(`/api/orders/${encodedId}/status`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(payload),
+		});
+
+		let data: any = null;
+		try {
+			data = await response.json();
+		} catch {
+			data = null;
+		}
+
+		if (!response.ok || !data?.ok) {
+			throw new Error(data?.error || `Failed to update order status (${response.status})`);
+		}
+
+		return data;
+	};
+
+	const handleAcceptOrder = async (orderId: string) => {
+		try {
+			await updateOrderStatusRemote(orderId, { status: 'preparing' });
+			updateOrderStatus(orderId, 'preparing');
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to accept order.';
+			alert(message);
+		}
 	};
 
 	const handleRejectOrder = (orderId: string) => {
@@ -53,7 +99,7 @@ export default function IncomingOrdersTab({ theme = 'dark' }: { theme?: 'light' 
 
 	const isRejectReasonValid = getFinalRejectionReason().length > 0;
 
-	const handleConfirmReject = () => {
+	const handleConfirmReject = async () => {
 		if (!selectedOrderId) {
 			return;
 		}
@@ -76,20 +122,26 @@ export default function IncomingOrdersTab({ theme = 'dark' }: { theme?: 'light' 
 			return;
 		}
 
-		updateOrderStatus(selectedOrderId, 'completed');
-		addOrderListEntry({
-			orderId: order.orderId,
-			customerName: order.customerName,
-			customerEmail: order.customerEmail,
-			items: order.items,
-			action: 'rejected',
-			notes: finalReason,
-		});
+		try {
+			await updateOrderStatusRemote(selectedOrderId, { status: 'rejected', reason: finalReason });
+			updateOrderStatus(selectedOrderId, 'rejected');
+			addOrderListEntry({
+				orderId: order.orderId,
+				customerName: order.customerName,
+				customerEmail: order.customerEmail,
+				items: order.items,
+				action: 'rejected',
+				notes: finalReason,
+			});
 
-		setShowRejectModal(false);
-		setSelectedOrderId(null);
-		setSelectedReason('');
-		setCustomReason('');
+			setShowRejectModal(false);
+			setSelectedOrderId(null);
+			setSelectedReason('');
+			setCustomReason('');
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to reject order.';
+			alert(message);
+		}
 	};
 
 	if (!mounted) {
@@ -133,7 +185,7 @@ export default function IncomingOrdersTab({ theme = 'dark' }: { theme?: 'light' 
 								key={order.id}
 								order={{
 									...order,
-									elapsedTime: `${elapsedTime} min ago`,
+									elapsedTime: formatElapsedTime(elapsedTime),
 									items: order.items,
 								}}
 								onAccept={handleAcceptOrder}

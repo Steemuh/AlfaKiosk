@@ -14,9 +14,14 @@ export interface Order {
 	customerEmail?: string;
 	pickupTime: string;
 	items: OrderItem[];
-	status: 'new' | 'incoming' | 'preparing' | 'ready' | 'completed';
+	status: 'new' | 'incoming' | 'preparing' | 'ready' | 'completed' | 'rejected';
 	createdAt: number;
 	totalPrice: number;
+	rejectionReason?: string;
+	paymentStatus?: 'pending' | 'paid' | 'failed';
+	paymentMethod?: 'cash' | 'gcash';
+	payrexPaymentId?: string;
+	cashierUpdatedAt?: string;
 }
 
 export interface OrderListEntry {
@@ -67,28 +72,9 @@ export const useOrderStore = create<OrderStore>()(
 					console.warn('[orderStore] setOrders received non-array input, using empty array fallback.');
 				}
 
-				set((state) => {
-					const orderMap = new Map(state.orders.map((order) => [order.id, order]));
-
-					safeOrders.forEach((order) => {
-						const existing = orderMap.get(order.id);
-						
-						// If order exists locally, preserve its status to prevent reverting
-						// local status changes (e.g., when order moved from incoming -> preparing -> ready)
-						if (existing) {
-							orderMap.set(order.id, {
-								...order,
-								status: existing.status,  // Always use local status for existing orders
-							});
-						} else {
-							// New order from API, use its status
-							orderMap.set(order.id, order);
-						}
-					});
-
-					const mergedOrders = Array.from(orderMap.values()).sort((a, b) => b.createdAt - a.createdAt);
-					return { orders: mergedOrders };
-				});
+				set(() => ({
+					orders: [...safeOrders].sort((a, b) => b.createdAt - a.createdAt),
+				}));
 			},
 
 			replaceOrders: (orders) => {

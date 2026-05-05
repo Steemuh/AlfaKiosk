@@ -1,20 +1,52 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useOrderStore } from '@saleor/shared/lib/orderStore';
+import { useOrderStore, type OrderItem } from '@saleor/shared/lib/orderStore';
 
 interface OrderListsPageProps {
 	theme: 'light' | 'dark';
 }
 
 export default function OrderListsPage({ theme }: OrderListsPageProps) {
-	const { orderList, clearOrderList } = useOrderStore();
+	const { orders } = useOrderStore();
 	const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
 
-	const sortedEntries = useMemo(
-		() => [...orderList].sort((a, b) => b.timestamp - a.timestamp),
-		[orderList],
-	);
+	type OrderListEntry = {
+		id: string;
+		orderId: string;
+		customerName: string;
+		customerEmail?: string;
+		items?: OrderItem[];
+		action: 'rejected' | 'handed-over';
+		timestamp: number;
+		notes?: string;
+		totalPrice?: number;
+	};
+
+	const sortedEntries = useMemo(() => {
+		const entries: OrderListEntry[] = orders
+			.filter((order) => order.status === 'rejected' || order.status === 'completed')
+			.map((order) => {
+				const parsedTimestamp = order.cashierUpdatedAt ? Date.parse(order.cashierUpdatedAt) : NaN;
+				const timestamp = Number.isFinite(parsedTimestamp) ? parsedTimestamp : order.createdAt;
+				const action: OrderListEntry['action'] =
+					order.status === 'rejected' ? 'rejected' : 'handed-over';
+
+				return {
+					id: order.id,
+					orderId: order.orderId,
+					customerName: order.customerName,
+					customerEmail: order.customerEmail,
+					items: order.items,
+					action,
+					timestamp,
+					notes: order.status === 'rejected' ? order.rejectionReason : undefined,
+					totalPrice: order.totalPrice,
+				};
+			});
+
+		return entries.sort((a, b) => b.timestamp - a.timestamp);
+	}, [orders]);
 
 	const formatDateTime = (timestamp: number) => {
 		const date = new Date(timestamp);
@@ -41,20 +73,6 @@ export default function OrderListsPage({ theme }: OrderListsPageProps) {
 		return (price * quantity).toFixed(2);
 	};
 
-	const handleClearAll = () => {
-		if (sortedEntries.length === 0) {
-			return;
-		}
-
-		const shouldClear = window.confirm('Clear all order list records? This cannot be undone.');
-		if (!shouldClear) {
-			return;
-		}
-
-		setExpandedEntryId(null);
-		clearOrderList();
-	};
-
 	const escapeCsv = (value: string) => {
 		const safe = value.replace(/"/g, '""');
 		return `"${safe}"`;
@@ -79,7 +97,8 @@ export default function OrderListsPage({ theme }: OrderListsPageProps) {
 
 		const rows = sortedEntries.map((entry) => {
 			const items = (entry.items ?? []).map((item) => `${item.name} x${item.quantity}`).join('; ');
-			const total = (entry.items ?? []).reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
+			const itemsTotal = (entry.items ?? []).reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
+			const total = itemsTotal > 0 ? itemsTotal : entry.totalPrice ?? 0;
 
 			return [
 				entry.orderId,
@@ -118,20 +137,6 @@ export default function OrderListsPage({ theme }: OrderListsPageProps) {
 					Rejected and handed-over orders are recorded here.
 				</p>
 				<div className="mt-3 flex flex-wrap gap-2">
-					<button
-						type="button"
-						onClick={handleClearAll}
-						disabled={sortedEntries.length === 0}
-						className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-							sortedEntries.length === 0
-								? 'cursor-not-allowed bg-slate-500/40 text-white/70'
-								: theme === 'light'
-								? 'bg-red-600 text-white hover:bg-red-700'
-								: 'bg-red-700 text-white hover:bg-red-600'
-						}`}
-					>
-						Delete All
-					</button>
 					<button
 						type="button"
 						onClick={handleExportCsv}

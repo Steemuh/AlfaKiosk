@@ -143,6 +143,7 @@ import {
 } from "@saleor/shared/gql/graphql";
 import { ProductList } from "@saleor/shared/ui/components/ProductList";
 import { CanteenSidebar } from "@saleor/shared/ui/components/CanteenSidebar";
+import { PullToRefresh } from "@/components/PullToRefresh";
 
 export const metadata = {
 	title: "Alfamart Food Kiosk - Order Now",
@@ -203,27 +204,29 @@ export default async function Page(props: { params: Promise<{ channel: string }>
 		const sidebarCategories = categories.filter((category) => productsByCategory[category.slug]);
 
 		return (
-			<div className="flex">
-				{sidebarCategories.length > 0 && (
-					<CanteenSidebar categories={sidebarCategories} channel={channel} />
-				)}
-				<main className="flex-1 ml-[var(--canteen-sidebar-width)]">
-					{sortedCategoryEntries.length > 0 ? (
-						sortedCategoryEntries.map(([categorySlug, categoryData]) => (
-							<section key={categorySlug} id={categorySlug} className="p-8 pb-16 scroll-mt-16">
-								<h2 className="mb-6 text-2xl font-semibold text-neutral-900">
-									{categoryData.name}
-								</h2>
-								<ProductList products={categoryData.products} channel={channel} />
-							</section>
-						))
-					) : (
-						<section className="p-8">
-							<p className="text-neutral-500">No products available at the moment.</p>
-						</section>
+			<PullToRefresh>
+				<div className="flex">
+					{sidebarCategories.length > 0 && (
+						<CanteenSidebar categories={sidebarCategories} channel={channel} />
 					)}
-				</main>
-			</div>
+					<main className="flex-1 ml-[var(--canteen-sidebar-width)]">
+						{sortedCategoryEntries.length > 0 ? (
+							sortedCategoryEntries.map(([categorySlug, categoryData]) => (
+								<section key={categorySlug} id={categorySlug} className="p-8 pb-16 scroll-mt-16">
+									<h2 className="mb-6 text-2xl font-semibold text-neutral-900">
+										{categoryData.name}
+									</h2>
+									<ProductList products={categoryData.products} channel={channel} />
+								</section>
+							))
+						) : (
+							<section className="p-8">
+								<p className="text-neutral-500">No products available at the moment.</p>
+							</section>
+						)}
+					</main>
+				</div>
+			</PullToRefresh>
 		);
 	} catch (error) {
 		console.error("CHANNEL PAGE ERROR:", error);

@@ -16,12 +16,40 @@ export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' 
 
 	const readyOrders = getOrdersByStatus('ready');
 
+	const updateOrderStatusRemote = async (orderId: string, payload: { status: string }) => {
+		if (!orderId) {
+			throw new Error('Missing order id');
+		}
+
+		const encodedId = encodeURIComponent(orderId);
+		const response = await fetch(`/api/orders/${encodedId}/status`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(payload),
+		});
+
+		let data: any = null;
+		try {
+			data = await response.json();
+		} catch {
+			data = null;
+		}
+
+		if (!response.ok || !data?.ok) {
+			throw new Error(data?.error || `Failed to update order status (${response.status})`);
+		}
+
+		return data;
+	};
+
 	const handleMarkPickedUp = (orderId: string) => {
 		setSelectedOrderId(orderId);
 		setShowHandOverModal(true);
 	};
 
-	const handleConfirmHandedOver = () => {
+	const handleConfirmHandedOver = async () => {
 		if (!selectedOrderId) {
 			return;
 		}
@@ -33,22 +61,40 @@ export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' 
 			return;
 		}
 
-		updateOrderStatus(selectedOrderId, 'completed');
-		addOrderListEntry({
-			orderId: order.orderId,
-			customerName: order.customerName,
-			customerEmail: order.customerEmail,
-			items: order.items,
-			action: 'handed-over',
-		});
+		try {
+			await updateOrderStatusRemote(selectedOrderId, { status: 'completed' });
+			updateOrderStatus(selectedOrderId, 'completed');
+			addOrderListEntry({
+				orderId: order.orderId,
+				customerName: order.customerName,
+				customerEmail: order.customerEmail,
+				items: order.items,
+				action: 'handed-over',
+			});
 
-		setShowHandOverModal(false);
-		setSelectedOrderId(null);
+			setShowHandOverModal(false);
+			setSelectedOrderId(null);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to mark order completed.';
+			alert(message);
+		}
 	};
 
 	if (!mounted) {
 		return null;
 	}
+
+	const formatElapsedTime = (minutes: number) => {
+		if (minutes < 60) {
+			return `${minutes} min ago`;
+		}
+		const hours = Math.floor(minutes / 60);
+		if (minutes < 1440) {
+			return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+		}
+		const days = Math.floor(minutes / 1440);
+		return `${days} day${days === 1 ? '' : 's'} ago`;
+	};
 
 	return (
 		<div className="space-y-4 sm:space-y-6">
@@ -85,7 +131,7 @@ export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' 
 								<OrderCard
 									order={{
 										...order,
-										elapsedTime: `${elapsedTime} min ago`,
+										elapsedTime: formatElapsedTime(elapsedTime),
 									items: order.items,
 									}}
 									onAccept={() => console.log('View order:', order.id)}

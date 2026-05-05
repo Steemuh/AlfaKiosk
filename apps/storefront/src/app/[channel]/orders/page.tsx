@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Clock, CheckCircle, Loader2, Bell } from "lucide-react";
 import { useOrderStore, type Order } from "@saleor/shared/lib/orderStore";
+import { PullToRefresh } from "@/components/PullToRefresh";
 
 export default function OrdersPage() {
 	const [mounted, setMounted] = useState(false);
@@ -166,8 +167,9 @@ export default function OrdersPage() {
 	};
 
 	return (
-		<div className="min-h-[calc(100vh-12rem)] px-4 py-6 pb-24">
-			<div className="max-w-2xl mx-auto">
+		<PullToRefresh>
+			<div className="min-h-[calc(100vh-12rem)] px-4 py-6 pb-24">
+				<div className="max-w-2xl mx-auto">
 				{statusNotices.length > 0 && (
 					<div className="mb-4 space-y-2">
 						{statusNotices.map((notice, index) => (
@@ -308,7 +310,8 @@ export default function OrdersPage() {
 						))}
 					</div>
 				)}
+				</div>
 			</div>
-		</div>
+		</PullToRefresh>
 	);
 }

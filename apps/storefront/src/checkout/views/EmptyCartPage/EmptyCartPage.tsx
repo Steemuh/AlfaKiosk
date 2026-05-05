@@ -6,7 +6,7 @@ export const EmptyCartPage = () => {
 	return (
 		<ErrorContentWrapper>
 			<Title className="mb-0 text-xl">Your cart is empty</Title>
-			<p>Add anything to the cart to continue.</p>
+			<p>You haven't added anything yet. Add items from the menu to continue.</p>
 			<LinkAsButton href="/" variant="secondary">
 				Go back to store
 			</LinkAsButton>

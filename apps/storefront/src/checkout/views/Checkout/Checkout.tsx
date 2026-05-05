@@ -7,7 +7,6 @@ import { ProceedButton } from "@/checkout/sections/Summary/ProceedButton";
 import { KioskCheckoutForm } from "@/checkout/sections/KioskCheckoutForm";
 import { useCheckout } from "@/checkout/hooks/useCheckout";
 import { CheckoutSkeleton } from "@/checkout/views/Checkout/CheckoutSkeleton";
-import PlaceOrderButton from "@/checkout/components/PlaceOrderButton";
 
 /**
  * Simplified Checkout for food kiosk - removes user authentication complexity
@@ -15,7 +14,7 @@ import PlaceOrderButton from "@/checkout/components/PlaceOrderButton";
 export const Checkout = ({ storeOpen = true }: { storeOpen?: boolean }) => {
 	const { checkout, fetching: fetchingCheckout } = useCheckout();
 
-	const isCheckoutInvalid = !fetchingCheckout && !checkout;
+	const isCheckoutMissing = !fetchingCheckout && !checkout;
 	const isEmptyCart = checkout && !checkout.lines.length;
 
 	const handleProceedPayment = () => {
@@ -29,8 +28,8 @@ export const Checkout = ({ storeOpen = true }: { storeOpen?: boolean }) => {
 		return <CheckoutSkeleton />;
 	}
 
-	return isCheckoutInvalid ? (
-		<PageNotFound />
+	return isCheckoutMissing ? (
+		<EmptyCartPage />
 	) : (
 		<ErrorBoundary FallbackComponent={PageNotFound}>
 			<div className="page">
@@ -46,7 +45,7 @@ export const Checkout = ({ storeOpen = true }: { storeOpen?: boolean }) => {
 							<KioskCheckoutForm storeOpen={storeOpen} />
 						</Suspense>
 
-						<PlaceOrderButton storeOpen={storeOpen} />
+						{/* PlaceOrderButton has been removed as per the new flow */}
 						
 						<ProceedButton onClick={handleProceedPayment} disabled={!checkout?.lines.length || !storeOpen} />
 					</div>

@@ -38,14 +38,17 @@ export const usePaymentGatewaysInitialize = () => {
 				onSuccess: ({ data }) => {
 					const parsedConfigs = (data.gatewayConfigs || []) as ParsedPaymentGateways;
 
+					// Don't throw error if no gateways - PayRex may be the only option
 					if (!parsedConfigs.length) {
-						throw new Error("No available payment gateways");
+						console.log("[Payment] No Saleor payment gateways available. PayRex may be used instead.");
 					}
 
 					setGatewayConfigs(parsedConfigs);
 				},
 				onError: ({ errors }) => {
-					console.log({ errors });
+					console.log("[Payment] Gateway initialization error:", { errors });
+					// Don't throw - allow checkout to proceed with other payment methods like PayRex
+					setGatewayConfigs([]);
 				},
 			}),
 			[availablePaymentGateways, checkoutId, paymentGatewaysInitialize],

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useCheckoutComplete } from '@/checkout/hooks/useCheckoutComplete';
+import { useEffect, useState } from 'react';
 import { useCheckout } from '@/checkout/hooks/useCheckout';
 import { LanguageCodeEnum } from '@saleor/shared/gql/graphql';
 import {
@@ -12,6 +11,7 @@ import {
 	useCheckoutShippingAddressUpdateMutation,
 } from '@/checkout/graphql';
 import { isValidEmail } from '@/checkout/lib/utils/common';
+import { savePendingPayrexOrder } from '@/checkout/lib/payrexFlow';
 
 interface PlaceOrderModalProps {
 	isOpen: boolean;
@@ -37,15 +37,25 @@ export default function PlaceOrderModal({
 	const [email, setEmail] = useState('');
 	const [pickupTime, setPickupTime] = useState(getDefaultPickupTime());
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const { onCheckoutComplete } = useCheckoutComplete();
 	const { checkout } = useCheckout();
 	const [, updateDeliveryMethod] = useCheckoutDeliveryMethodUpdateMutation();
 	const [, updateEmail] = useCheckoutEmailUpdateMutation();
 	const [, updateBillingAddress] = useCheckoutBillingAddressUpdateMutation();
 	const [, updateShippingAddress] = useCheckoutShippingAddressUpdateMutation();
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
+	useEffect(() => {
+		if (!isOpen) return;
+		const storedName = sessionStorage.getItem('payrexCustomerName') || sessionStorage.getItem('customerName') || '';
+		const storedEmail = sessionStorage.getItem('payrexCustomerEmail') || sessionStorage.getItem('customerEmail') || '';
+		if (storedName) {
+			setCustomerName(storedName);
+		}
+		if (storedEmail) {
+			setEmail(storedEmail);
+		}
+	}, [isOpen]);
+
+	const submitOrder = async () => {
 		if (!customerName.trim()) {
 			alert('Please enter your name');
 			return;
@@ -64,10 +74,10 @@ export default function PlaceOrderModal({
 				return;
 			}
 
-			if (!checkout.email || checkout.email !== email) {
+			if (!checkout.email || checkout.email !== email.trim()) {
 				const emailResult = await updateEmail({
 					checkoutId: checkout.id,
-					email,
+					email: email.trim(),
 					languageCode: 'EN_US',
 				});
 				const emailErrors = emailResult.data?.checkoutEmailUpdate?.errors ?? [];
@@ -78,10 +88,10 @@ export default function PlaceOrderModal({
 			}
 
 			const [firstName, ...rest] = customerName.trim().split(' ');
-			const lastName = rest.length > 0 ? rest.join(' ') : 'Customer';
+			const lastName = rest.length > 0 ? rest.join(' ') : '';
 			const billingAddress = {
 				firstName: firstName || 'Customer',
-				lastName,
+				lastName: lastName || 'Customer',
 				streetAddress1: 'SM Retail Corporate Office, J.W. Diokno Blvd. cor. Bayshore Ave.',
 				city: 'Pasay City',
 				country: 'PH' as CountryCode,
@@ -132,31 +142,70 @@ export default function PlaceOrderModal({
 				}
 			}
 
-			const result = await onCheckoutComplete({ customerEmail: email.trim() });
-			if (result?.hasErrors) {
-				const apiMessages = result.apiErrors?.map((error) => error.message).filter(Boolean) ?? [];
-				const gqlMessages = result.graphqlErrors?.map((error) => error.message).filter(Boolean) ?? [];
-				const message = [...apiMessages, ...gqlMessages].join('\n') || 'Failed to place order. Please try again.';
-				alert(message);
+			savePendingPayrexOrder({
+				checkoutId: checkout.id,
+				customerName: customerName.trim(),
+				customerEmail: email.trim(),
+				pickupTime,
+				currency: checkout.totalPrice?.gross?.currency || 'PHP',
+				totalPrice: Number(totalPrice || 0),
+				items: cartItems,
+				createdAt: new Date().toISOString(),
+			});
+
+			const appUrl = window.location.origin;
+			const response = await fetch('/api/payrex/create-payment', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					checkoutId: checkout.id,
+					amount: Number(totalPrice || 0),
+					currency: checkout.totalPrice?.gross?.currency || 'PHP',
+					customerEmail: email.trim(),
+					customerName: customerName.trim(),
+					pickupTime,
+					description: `Checkout ${checkout.id}`,
+					items: cartItems,
+					successUrl: `${appUrl}/payment/success?checkoutId=${checkout.id}`,
+					failureUrl: `${appUrl}/payment/failed?checkoutId=${checkout.id}`,
+					cancelUrl: `${appUrl}/payment/failed?checkoutId=${checkout.id}`,
+				}),
+			});
+
+			const data = await response.json();
+			if (!response.ok || !data?.checkoutUrl) {
+				const message = data?.details || data?.error || 'Failed to start PayRex payment.';
+				alert(String(message));
 				return;
 			}
-			// Reset form after successful order placement
-			setCustomerName('');
-			setEmail('');
-			setPickupTime(getDefaultPickupTime());
-			onClose();
+
+			sessionStorage.setItem('customerName', customerName.trim());
+			sessionStorage.setItem('customerEmail', email.trim());
+			sessionStorage.setItem('payrexPaymentStatus', 'pending');
+			sessionStorage.setItem('payrexCheckoutId', checkout.id);
+			if (data.sessionId) {
+				sessionStorage.setItem('payrexSessionId', String(data.sessionId));
+			}
+			window.location.href = data.checkoutUrl;
 		} catch (error) {
 			console.error('Checkout completion failed:', error);
-			alert('Failed to place order. Please try again.');
+			alert('Failed to start payment. Please try again.');
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
-	if (!isOpen) return null;
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+			void submitOrder();
+	};
+
+		if (!isOpen) return null;
 
 	return (
-		<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+		<div className={`fixed inset-0 bg-black/50 z-50 items-center justify-center p-4 ${isOpen ? 'flex' : 'hidden'}`}>
 			<div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
 				<h2 className="text-2xl font-bold text-slate-900 mb-4">Place Order</h2>
 
@@ -249,7 +298,7 @@ export default function PlaceOrderModal({
 							disabled={isSubmitting || cartItems.length === 0}
 							className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition disabled:opacity-50"
 						>
-							{isSubmitting ? 'Placing...' : 'Place Order'}
+							{isSubmitting ? 'Processing...' : 'Pay & Place Order'}
 						</button>
 					</div>
 				</form>

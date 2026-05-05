@@ -23,6 +23,15 @@ type SaleorOrderStatus =
     | 'CANCELED'
     | string;
 
+const CASHIER_STATUS_VALUES: Array<Order['status']> = [
+    'new',
+    'incoming',
+    'preparing',
+    'ready',
+    'completed',
+    'rejected',
+];
+
 function mapSaleorStatusToCashierStatus(status: unknown): Order['status'] {
     switch (status as SaleorOrderStatus) {
         case 'UNCONFIRMED':
@@ -80,25 +89,38 @@ function mapSaleorOrderToCashierOrder(rawOrder: unknown, index: number): Order {
     const fallbackId = `unknown-order-${index}`;
     const id = asNonEmptyString(raw.id) ?? asNonEmptyString(raw.number) ?? fallbackId;
     const orderId = asNonEmptyString(raw.number) ?? id;
+    const metadataCustomerName = asNonEmptyString(raw.customerName);
+    const metadataCustomerEmail = asNonEmptyString(raw.customerEmail);
+    const metadataPickupTime = asNonEmptyString(raw.pickupTime);
     const billingAddress = (raw.billingAddress ?? {}) as Record<string, unknown>;
     const firstName = asNonEmptyString(billingAddress.firstName);
     const lastName = asNonEmptyString(billingAddress.lastName);
-    const customerNameFromBilling = [firstName, lastName].filter(Boolean).join(' ').trim();
-    const customerName = customerNameFromBilling || asNonEmptyString(raw.userEmail) || 'Walk-in Customer';
+    const sanitizedLastName = lastName && lastName.toLowerCase() === 'customer' ? null : lastName;
+    const customerNameFromBilling = [firstName, sanitizedLastName].filter(Boolean).join(' ').trim();
+    const customerName = metadataCustomerName || customerNameFromBilling || asNonEmptyString(raw.userEmail) || 'Walk-in Customer';
     const createdRaw = asNonEmptyString(raw.created);
     const createdAt = createdRaw ? new Date(createdRaw).getTime() : Date.now();
     const rawLines = Array.isArray(raw.lines) ? raw.lines : [];
+    const metadataStatus = asNonEmptyString(raw.cashierStatus);
+    const cashierStatus = metadataStatus && CASHIER_STATUS_VALUES.includes(metadataStatus as Order['status'])
+        ? (metadataStatus as Order['status'])
+        : mapSaleorStatusToCashierStatus(raw.status);
 
     return {
         id,
         orderId,
         customerName,
-        customerEmail: asNonEmptyString(raw.userEmail) ?? undefined,
-        pickupTime: 'ASAP',
+        customerEmail: metadataCustomerEmail ?? asNonEmptyString(raw.userEmail) ?? undefined,
+        pickupTime: metadataPickupTime ?? 'ASAP',
         items: rawLines.map(mapSaleorLineToOrderItem),
-        status: mapSaleorStatusToCashierStatus(raw.status),
+        status: cashierStatus,
         createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
         totalPrice: asNumber(raw.totalAmount, 0),
+        rejectionReason: asNonEmptyString(raw.rejectionReason) ?? undefined,
+        paymentStatus: asNonEmptyString(raw.paymentStatus) as Order['paymentStatus'] | undefined,
+        paymentMethod: asNonEmptyString(raw.paymentMethod) as Order['paymentMethod'] | undefined,
+        payrexPaymentId: asNonEmptyString(raw.payrexPaymentId) ?? undefined,
+        cashierUpdatedAt: asNonEmptyString(raw.cashierUpdatedAt) ?? undefined,
     };
 }
 

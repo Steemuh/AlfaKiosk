@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useCheckoutCompleteMutation } from "@/checkout/graphql";
 import { useCheckout } from "@/checkout/hooks/useCheckout";
 import { useSubmit } from "@/checkout/hooks/useSubmit";
-import { replaceUrl } from "@/checkout/lib/utils/url";
 import { useOrderStore } from "@saleor/shared/lib/orderStore";
 
 export const useCheckoutComplete = () => {
@@ -12,7 +11,53 @@ export const useCheckoutComplete = () => {
 	const [{ fetching }, checkoutComplete] = useCheckoutCompleteMutation();
 	const addOrder = useOrderStore((state) => state.addOrder);
 
-	const onCheckoutComplete = useSubmit<{ customerEmail?: string }, typeof checkoutComplete>(
+	type CheckoutCompleteFormData = {
+		customerEmail?: string;
+		customerName?: string;
+		items?: Array<{ name: string; quantity: number; price: number }>;
+		totalPrice?: number;
+		pickupTime?: string;
+		paidViaPayrex?: boolean;
+		payrexPaymentId?: string;
+		paymentMethod?: string;
+	};
+
+	const attachPayrexPayment = async (orderId: string, formData: CheckoutCompleteFormData) => {
+		if (!formData.paidViaPayrex) return;
+		const payrexPaymentId = formData.payrexPaymentId || "";
+		const paymentMethod = formData.paymentMethod || "gcash";
+		const paidAt = new Date().toISOString();
+
+		try {
+			const response = await fetch("/api/payrex/attach-order", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					orderId,
+					payrexPaymentId,
+					paymentMethod,
+					paymentStatus: "paid",
+					paidAmount: formData.totalPrice ?? 0,
+					paidAt,
+					customerName: formData.customerName,
+					customerEmail: formData.customerEmail,
+					pickupTime: formData.pickupTime,
+					cashierStatus: "new",
+				}),
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				console.warn("[Checkout] Failed to attach PayRex payment", data?.error || response.statusText);
+			}
+		} catch (error) {
+			console.warn("[Checkout] Failed to attach PayRex payment", error);
+		}
+	};
+
+	const onCheckoutComplete = useSubmit<CheckoutCompleteFormData, typeof checkoutComplete>(
 		useMemo(
 			() => ({
 				parse: () => ({
@@ -31,9 +76,10 @@ export const useCheckoutComplete = () => {
 						})) || [];
 
 						// Get customer name from order's billing address
-						const customerName = order.billingAddress?.firstName 
-							? `${order.billingAddress.firstName} ${order.billingAddress.lastName || ''}`.trim()
-							: 'Customer';
+						const billingFirst = order.billingAddress?.firstName?.trim() || '';
+						const billingLastRaw = order.billingAddress?.lastName?.trim() || '';
+						const billingLast = billingLastRaw.toLowerCase() === 'customer' ? '' : billingLastRaw;
+						const customerName = [billingFirst, billingLast].filter(Boolean).join(' ').trim() || 'Customer';
 
 						// Use the order number from Saleor (e.g., "30")
 						const orderNumber = order.number || order.id.substring(order.id.length - 6).toUpperCase();
@@ -42,19 +88,13 @@ export const useCheckoutComplete = () => {
 							orderId: orderNumber,
 							customerName,
 							customerEmail: formData.customerEmail,
-							pickupTime: new Date(Date.now() + 45 * 60 * 1000).toTimeString().slice(0, 5),
+							pickupTime: formData.pickupTime || new Date(Date.now() + 45 * 60 * 1000).toTimeString().slice(0, 5),
 							items,
 							status: 'new',
 							totalPrice: order.total?.gross?.amount || 0,
 						});
 
-						const newUrl = replaceUrl({
-							query: {
-								order: order.id,
-							},
-							replaceWholeQuery: true,
-						});
-						window.location.href = newUrl;
+						void attachPayrexPayment(order.id, formData);
 					}
 				},
 			}),

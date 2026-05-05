@@ -19,6 +19,16 @@ export const KioskCheckoutForm = ({ storeOpen = true }: { storeOpen?: boolean })
 		);
 	}
 
+	// Extract checkout data for payment section
+	const amount = checkout.totalPrice?.gross?.amount;
+	const currency = checkout.totalPrice?.gross?.currency || "PHP";
+	const orderId = checkout.id;
+	const items = checkout.lines.map(line => ({
+		name: line.variant?.product?.name || line.variant?.name || "Item",
+		quantity: line.quantity,
+		price: line.totalPrice?.gross?.amount || 0,
+	}));
+
 	return (
 		<div className="flex flex-col items-end">
 			<div className="flex w-full flex-col rounded">
@@ -32,7 +42,12 @@ export const KioskCheckoutForm = ({ storeOpen = true }: { storeOpen?: boolean })
 				
 				{/* Payment section - select payment method */}
 				<Suspense fallback={<PaymentSectionSkeleton />}>
-					<PaymentSection />
+					<PaymentSection
+						amount={amount}
+						currency={currency}
+						orderId={orderId}
+						items={items}
+					/>
 				</Suspense>
 			</div>
 		</div>

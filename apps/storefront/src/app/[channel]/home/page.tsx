@@ -1,9 +1,11 @@
 import { Store, Users, Coffee, Heart } from "lucide-react";
+import { PullToRefresh } from "@/components/PullToRefresh";
 //homepage
 
 export default function HomePage() {
 	return (
-		<div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] px-6 py-8 pb-24">
+		<PullToRefresh>
+			<div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] px-6 py-8 pb-24">
 			{/* Logo/Welcome Section */}
 			<div className="text-center mb-8">
 				<div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -60,6 +62,7 @@ export default function HomePage() {
 				<p>Developed by Alfamart IT Department</p>
 				<p className="mt-1">© 2026 All Rights Reserved</p>
 			</div>
-		</div>
+			</div>
+		</PullToRefresh>
 	);
 }

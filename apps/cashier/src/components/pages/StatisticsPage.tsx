@@ -8,7 +8,7 @@ interface StatisticsPageProps {
 }
 
 export default function StatisticsPage({ theme }: StatisticsPageProps) {
-	const { orders, orderList } = useOrderStore();
+	const { orders } = useOrderStore();
 
 	const {
 		ordersToday,
@@ -24,19 +24,39 @@ export default function StatisticsPage({ theme }: StatisticsPageProps) {
 		startOfToday.setHours(0, 0, 0, 0);
 		const startTimestamp = startOfToday.getTime();
 
+		const getOrderEventTimestamp = (order: { cashierUpdatedAt?: string; createdAt: number }) => {
+			if (order.cashierUpdatedAt) {
+				const parsed = Date.parse(order.cashierUpdatedAt);
+				if (Number.isFinite(parsed)) {
+					return parsed;
+				}
+			}
+
+			return order.createdAt;
+		};
+
 		const todaysOrders = orders.filter((order) => order.createdAt >= startTimestamp);
-		const handedOver = orderList.filter(
-			(entry) => entry.action === 'handed-over' && entry.timestamp >= startTimestamp,
-		);
-		const rejected = orderList.filter(
-			(entry) => entry.action === 'rejected' && entry.timestamp >= startTimestamp,
-		);
+		const handedOver = orders.filter((order) => {
+			if (order.status !== 'completed') {
+				return false;
+			}
+
+			return getOrderEventTimestamp(order) >= startTimestamp;
+		});
+		const rejected = orders.filter((order) => {
+			if (order.status !== 'rejected') {
+				return false;
+			}
+
+			return getOrderEventTimestamp(order) >= startTimestamp;
+		});
 
 		const revenue = handedOver.reduce((sum, entry) => {
-			const entryTotal = (entry.items ?? []).reduce(
+			const itemsTotal = (entry.items ?? []).reduce(
 				(itemSum, item) => itemSum + (item.price || 0) * item.quantity,
 				0,
 			);
+			const entryTotal = itemsTotal > 0 ? itemsTotal : entry.totalPrice ?? 0;
 			return sum + entryTotal;
 		}, 0);
 
@@ -52,7 +72,9 @@ export default function StatisticsPage({ theme }: StatisticsPageProps) {
 
 		const reasonMap = new Map<string, number>();
 		rejected.forEach((entry) => {
-			const reason = entry.notes && entry.notes.trim().length > 0 ? entry.notes : 'Unknown reason';
+			const reason = entry.rejectionReason && entry.rejectionReason.trim().length > 0
+				? entry.rejectionReason
+				: 'Unknown reason';
 			reasonMap.set(reason, (reasonMap.get(reason) ?? 0) + 1);
 		});
 		const topReasons = Array.from(reasonMap.entries())
@@ -73,7 +95,7 @@ export default function StatisticsPage({ theme }: StatisticsPageProps) {
 			completionRate: completion,
 			rejectionRate: rejection,
 		};
-	}, [orders, orderList]);
+	}, [orders]);
 
 	const StatCard = ({
 		label,

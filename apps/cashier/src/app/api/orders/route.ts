@@ -22,6 +22,10 @@ const ORDERS_QUERY = /* GraphQL */ `
           number
           created
           status
+          metadata {
+            key
+            value
+          }
           total {
             gross {
               amount
@@ -63,6 +67,7 @@ type SaleorOrdersResponse = {
           number: string | null;
           created: string;
           status: string;
+          metadata?: Array<{ key: string; value: string }>;
           userEmail: string | null;
           billingAddress?: {
             firstName?: string | null;
@@ -107,6 +112,15 @@ function fail(message: string, status = 500, extra?: Record<string, unknown>) {
     },
     { status }
   );
+}
+
+function getMetadataValue(metadata: Array<{ key: string; value: string }> | undefined, key: string) {
+  if (!metadata) {
+    return null;
+  }
+
+  const match = metadata.find((entry) => entry.key === key);
+  return match?.value ?? null;
 }
 
 export async function GET() {
@@ -175,35 +189,63 @@ export async function GET() {
 
     const edges = parsed?.data?.orders?.edges ?? [];
 
-    const orders = edges.map(({ node }) => ({
-      id: node.id,
-      number: node.number,
-      created: node.created,
-      status: node.status,
-      userEmail: node.userEmail,
-      billingAddress: {
-        firstName: node.billingAddress?.firstName ?? null,
-        lastName: node.billingAddress?.lastName ?? null,
-      },
-      channel: node.channel?.slug ?? null,
-      totalAmount: node.total?.gross?.amount ?? 0,
-      currency: node.total?.gross?.currency ?? "PHP",
-      lines: (node.lines ?? []).map((line) => ({
-        id: line.id,
-        productName: line.productName,
-        variantName: line.variantName,
-        quantity: line.quantity,
-        unitAmount: line.unitPrice?.gross?.amount ?? 0,
-        currency: line.unitPrice?.gross?.currency ?? "PHP",
-      })),
-    }));
+    const orders = edges.map(({ node }) => {
+      const metadata = node.metadata ?? [];
+      const cashierStatus = getMetadataValue(metadata, "cashierStatus");
+      const rejectionReason = getMetadataValue(metadata, "rejectionReason");
+      const paymentStatus = getMetadataValue(metadata, "paymentStatus");
+      const paymentMethod = getMetadataValue(metadata, "paymentMethod");
+      const payrexPaymentId = getMetadataValue(metadata, "payrexPaymentId");
+      const cashierUpdatedAt = getMetadataValue(metadata, "cashierUpdatedAt");
+        const paidAmount = getMetadataValue(metadata, "paidAmount");
+        const paidAt = getMetadataValue(metadata, "paidAt");
+        const customerName = getMetadataValue(metadata, "customerName");
+        const customerEmail = getMetadataValue(metadata, "customerEmail");
+        const pickupTime = getMetadataValue(metadata, "pickupTime");
+
+      return {
+        id: node.id,
+        number: node.number,
+        created: node.created,
+        status: node.status,
+        cashierStatus,
+        rejectionReason,
+        paymentStatus,
+        paymentMethod,
+        payrexPaymentId,
+        cashierUpdatedAt,
+          paidAmount,
+          paidAt,
+          customerName,
+          customerEmail,
+          pickupTime,
+        userEmail: node.userEmail,
+        billingAddress: {
+          firstName: node.billingAddress?.firstName ?? null,
+          lastName: node.billingAddress?.lastName ?? null,
+        },
+        channel: node.channel?.slug ?? null,
+        totalAmount: node.total?.gross?.amount ?? 0,
+        currency: node.total?.gross?.currency ?? "PHP",
+        lines: (node.lines ?? []).map((line) => ({
+          id: line.id,
+          productName: line.productName,
+          variantName: line.variantName,
+          quantity: line.quantity,
+          unitAmount: line.unitPrice?.gross?.amount ?? 0,
+          currency: line.unitPrice?.gross?.currency ?? "PHP",
+        })),
+      };
+    });
+
+      const paidOrders = orders.filter((order) => order.paymentStatus === "paid");
 
     return NextResponse.json(
       {
         ok: true,
-        count: orders.length,
+        count: paidOrders.length,
         channel: DEFAULT_CHANNEL,
-        orders,
+        orders: paidOrders,
       },
       { status: 200 }
     );

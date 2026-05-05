@@ -16,16 +16,52 @@ export default function PreparingOrdersTab({ theme = 'dark' }: { theme?: 'light'
 
 	const preparingOrders = getOrdersByStatus('preparing');
 
+	const updateOrderStatusRemote = async (orderId: string, payload: { status: string }) => {
+		if (!orderId) {
+			throw new Error('Missing order id');
+		}
+
+		const encodedId = encodeURIComponent(orderId);
+		const response = await fetch(`/api/orders/${encodedId}/status`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(payload),
+		});
+
+		let data: any = null;
+		try {
+			data = await response.json();
+		} catch {
+			data = null;
+		}
+
+		if (!response.ok || !data?.ok) {
+			throw new Error(data?.error || `Failed to update order status (${response.status})`);
+		}
+
+		return data;
+	};
+
 	const handleMarkReady = (orderId: string) => {
 		setSelectedOrderId(orderId);
 		setShowConfirmation(true);
 	};
 
-	const handleConfirmReady = () => {
-		if (selectedOrderId) {
+	const handleConfirmReady = async () => {
+		if (!selectedOrderId) {
+			return;
+		}
+
+		try {
+			await updateOrderStatusRemote(selectedOrderId, { status: 'ready' });
 			updateOrderStatus(selectedOrderId, 'ready');
 			setShowConfirmation(false);
 			setSelectedOrderId(null);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to mark order ready.';
+			alert(message);
 		}
 	};
 
