@@ -12,6 +12,7 @@ export const PayRexCheckout = () => {
 		name: line.variant?.product?.name || "Item",
 		quantity: line.quantity,
 		price: parseFloat(String(line.unitPrice?.gross?.amount || "0")),
+		image: line.variant?.product?.thumbnail?.url || undefined,
 	})) || [];
 
 	const amount = parseFloat(String(checkout?.totalPrice?.gross?.amount || "0"));

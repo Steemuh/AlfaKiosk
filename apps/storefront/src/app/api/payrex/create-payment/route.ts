@@ -1,5 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+type PayRexCustomer = {
+	id: string;
+	email?: string;
+	name?: string;
+};
+
+type PayRexCustomerList = {
+	data?: PayRexCustomer[];
+};
+
 interface PayRexCheckoutSessionRequest {
 	orderId?: string;
 	checkoutId: string;
@@ -25,6 +35,7 @@ interface PayRexCheckoutSessionRequest {
 		name: string;
 		quantity: number;
 		price: number;
+		image?: string;
 	}>;
 }
 
@@ -42,6 +53,57 @@ type SaleorMetadataResponse = {
 	};
 	errors?: Array<{ message?: string }>;
 };
+
+async function resolvePayRexCustomerId(
+	payrex: any,
+	customerName: string,
+	customerEmail: string
+): Promise<string | undefined> {
+	const normalizedEmail = customerEmail.toLowerCase();
+
+	try {
+		const listed = (await payrex.customers.list({
+			email: normalizedEmail,
+			limit: 1,
+		})) as PayRexCustomerList;
+		const existingCustomer = listed.data?.find(
+			(customer) => customer.email?.toLowerCase() === normalizedEmail
+		);
+
+		if (existingCustomer?.id) {
+			try {
+				await payrex.customers.update(existingCustomer.id, {
+					name: customerName,
+					email: normalizedEmail,
+				});
+			} catch (updateError) {
+				console.warn("[PayRex API Route] Failed to update existing customer", {
+					customerId: existingCustomer.id,
+					error: updateError instanceof Error ? updateError.message : String(updateError),
+				});
+			}
+			return existingCustomer.id;
+		}
+	} catch (listError) {
+		console.warn("[PayRex API Route] Failed to list customers by email", {
+			error: listError instanceof Error ? listError.message : String(listError),
+		});
+	}
+
+	try {
+		const createdCustomer = (await payrex.customers.create({
+			name: customerName,
+			email: normalizedEmail,
+		})) as PayRexCustomer;
+		return createdCustomer.id;
+	} catch (createError) {
+		console.warn("[PayRex API Route] Failed to create customer", {
+			error: createError instanceof Error ? createError.message : String(createError),
+		});
+	}
+
+	return undefined;
+}
 
 /**
  * POST /api/payrex/create-payment
@@ -152,6 +214,7 @@ export async function POST(request: NextRequest) {
 				name: item.name,
 				amount: Math.round(item.price * 100),
 				quantity: item.quantity,
+				...(item.image ? { image: item.image } : {}),
 			}))
 			: [{
 				name: fullDescription,
@@ -184,27 +247,19 @@ export async function POST(request: NextRequest) {
 
 		let customerReferenceId: string | undefined;
 		if (normalizedCustomerName && normalizedCustomerEmail) {
-			try {
-				const customer = await payrex.customers.create({
-					name: normalizedCustomerName,
-					email: normalizedCustomerEmail,
-				});
-				customerReferenceId = customer.id;
-				console.log("[PayRex API Route] Customer created", {
-					customerId: customerReferenceId,
-				});
-			} catch (customerError) {
-				const errorDetails = (customerError as { errors?: unknown })?.errors;
-				console.warn("[PayRex API Route] Failed to create customer, proceeding without prefill", {
-					error: customerError instanceof Error ? customerError.message : String(customerError),
-					errors: errorDetails,
-				});
-			}
+			customerReferenceId = await resolvePayRexCustomerId(
+				payrex,
+				normalizedCustomerName,
+				normalizedCustomerEmail
+			);
+			console.log("[PayRex API Route] Customer resolved for checkout", {
+				hasCustomerReferenceId: !!customerReferenceId,
+			});
 		}
 
 		let checkoutSession: PayRexCheckoutSessionResponse;
 		try {
-			checkoutSession = await payrex.checkoutSessions.create({
+			const checkoutPayload = {
 				currency: currency.toUpperCase(),
 				success_url: successUrl,
 				cancel_url: failureUrl,
@@ -213,6 +268,18 @@ export async function POST(request: NextRequest) {
 				billing_details_collection: "auto",
 				description: fullDescription,
 				...(customerReferenceId ? { customer_reference_id: customerReferenceId } : {}),
+				...((normalizedCustomerName || normalizedCustomerEmail)
+					? {
+						payment_method_options: {
+							gcash: {
+								billing_details: {
+									...(normalizedCustomerName ? { name: normalizedCustomerName } : {}),
+									...(normalizedCustomerEmail ? { email: normalizedCustomerEmail } : {}),
+								},
+							},
+						},
+					}
+					: {}),
 				metadata: {
 					checkout_id: checkoutId,
 					amount: String(amount),
@@ -226,7 +293,16 @@ export async function POST(request: NextRequest) {
 					...(billingAddressText ? { billing_address: billingAddressText } : {}),
 					...(itemSummary ? { item_summary: itemSummary } : {}),
 				},
+			};
+
+			console.log("[PayRex API Route] Checkout prefill payload", {
+				hasCustomerReferenceId: !!customerReferenceId,
+				hasName: !!normalizedCustomerName,
+				hasEmail: !!normalizedCustomerEmail,
+				hasPaymentMethodOptions: !!checkoutPayload.payment_method_options,
 			});
+
+			checkoutSession = await payrex.checkoutSessions.create(checkoutPayload);
 		} catch (sdkError) {
 			const payrexErrors = (sdkError as { errors?: unknown })?.errors;
 			console.error("[PayRex API Route] PayRex SDK error:", {
@@ -247,7 +323,19 @@ export async function POST(request: NextRequest) {
 		console.log("[PayRex API Route] Checkout session created", {
 			sessionId: checkoutSession.checkout_session_id || checkoutSession.id,
 			checkoutUrl: checkoutSession.checkout_url || checkoutSession.url,
+			responseKeys: Object.keys(checkoutSession || {}),
+			metadataKeys: Object.keys((checkoutSession as { metadata?: Record<string, string> }).metadata || {}),
 		});
+		if (!checkoutSession.checkout_session_id && !checkoutSession.id) {
+			console.warn("[PayRex API Route] Checkout session response did not include a session id", {
+				responseKeys: Object.keys(checkoutSession || {}),
+			});
+		}
+		if (!checkoutSession.checkout_url && !checkoutSession.url) {
+			console.warn("[PayRex API Route] Checkout session response did not include a checkout URL", {
+				responseKeys: Object.keys(checkoutSession || {}),
+			});
+		}
 
 		const saleorApiUrl = process.env.SALEOR_API_URL || process.env.NEXT_PUBLIC_SALEOR_API_URL;
 		const appToken = process.env.SALEOR_APP_TOKEN;

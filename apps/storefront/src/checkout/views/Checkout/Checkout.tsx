@@ -3,7 +3,6 @@ import { ErrorBoundary } from "react-error-boundary";
 import { EmptyCartPage } from "../EmptyCartPage";
 import { PageNotFound } from "../PageNotFound";
 import { Summary, SummarySkeleton } from "@/checkout/sections/Summary";
-import { ProceedButton } from "@/checkout/sections/Summary/ProceedButton";
 import { KioskCheckoutForm } from "@/checkout/sections/KioskCheckoutForm";
 import { useCheckout } from "@/checkout/hooks/useCheckout";
 import { CheckoutSkeleton } from "@/checkout/views/Checkout/CheckoutSkeleton";
@@ -16,12 +15,6 @@ export const Checkout = ({ storeOpen = true }: { storeOpen?: boolean }) => {
 
 	const isCheckoutMissing = !fetchingCheckout && !checkout;
 	const isEmptyCart = checkout && !checkout.lines.length;
-
-	const handleProceedPayment = () => {
-		// Scroll to payment section
-		const paymentSection = document.querySelector('[data-testid="paymentMethods"]');
-		paymentSection?.scrollIntoView({ behavior: "smooth" });
-	};
 
 	// Show loading state while fetching
 	if (fetchingCheckout) {
@@ -44,10 +37,6 @@ export const Checkout = ({ storeOpen = true }: { storeOpen?: boolean }) => {
 						<Suspense fallback={<CheckoutSkeleton />}>
 							<KioskCheckoutForm storeOpen={storeOpen} />
 						</Suspense>
-
-						{/* PlaceOrderButton has been removed as per the new flow */}
-						
-						<ProceedButton onClick={handleProceedPayment} disabled={!checkout?.lines.length || !storeOpen} />
 					</div>
 				)}
 			</div>

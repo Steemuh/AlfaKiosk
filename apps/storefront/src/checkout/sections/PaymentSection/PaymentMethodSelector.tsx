@@ -1,8 +1,7 @@
 "use client";
 import { createContext, useContext, useState, ReactNode } from "react";
-import { CreditCardIcon } from "lucide-react";
 
-export type PaymentMethod = "gcash" | "paymaya" | "saleor" | null;
+export type PaymentMethod = "gcash" | null;
 
 interface PaymentMethodContextType {
 	selectedMethod: PaymentMethod;
@@ -45,7 +44,7 @@ interface PaymentMethodSelectorProps {
 
 /**
  * Payment Method Selector Component
- * Allows users to select between GCash (PayRex), PayMaya, or Saleor payment gateways
+ * Allows users to select GCash via PayRex.
  */
 export const PaymentMethodSelector = ({
 	onMethodSelect,
@@ -61,11 +60,10 @@ export const PaymentMethodSelector = ({
 	return (
 		<div className="space-y-4">
 				<div className="text-sm text-neutral-600 font-medium">
-					How would you like to pay?
+					GCash via PayRex
 				</div>
 
-				<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-					{/* GCash Option - PayRex */}
+				<div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
 					<button
 						type="button"
 						onClick={() => handleSelectMethod("gcash")}
@@ -90,44 +88,6 @@ export const PaymentMethodSelector = ({
 							Digital Payment
 						</span>
 					</button>
-
-					{/* PayMaya Option */}
-					<button
-						type="button"
-						onClick={() => handleSelectMethod("paymaya")}
-						className={`flex flex-col items-center justify-center rounded-lg border-2 p-6 transition-all ${
-							selectedMethod === "paymaya"
-								? "border-green-500 bg-green-50"
-								: "border-neutral-200 bg-white hover:border-neutral-300"
-						}`}
-						aria-pressed={selectedMethod === "paymaya"}
-					>
-						<CreditCardIcon className="mb-2 h-8 w-8 text-green-600" />
-						<span className="font-medium text-neutral-900">PayMaya</span>
-						<span className="mt-1 text-xs text-neutral-500">
-							Digital Payment
-						</span>
-					</button>
-
-					{/* Saleor Payment Methods */}
-					<button
-						type="button"
-						onClick={() => handleSelectMethod("saleor")}
-						className={`flex flex-col items-center justify-center rounded-lg border-2 p-6 transition-all ${
-							selectedMethod === "saleor"
-								? "border-purple-500 bg-purple-50"
-								: "border-neutral-200 bg-white hover:border-neutral-300"
-						}`}
-						aria-pressed={selectedMethod === "saleor"}
-					>
-						<CreditCardIcon className="mb-2 h-8 w-8 text-purple-600" />
-						<span className="font-medium text-neutral-900">
-							Other Methods
-						</span>
-						<span className="mt-1 text-xs text-neutral-500">
-							Credit Card / Bank
-						</span>
-					</button>
 				</div>
 
 				{selectedMethod && (
@@ -136,16 +96,6 @@ export const PaymentMethodSelector = ({
 							<p>
 								✓ You'll be redirected to PayRex to complete your payment via
 								GCash securely.
-							</p>
-						)}
-						{selectedMethod === "paymaya" && (
-							<p>
-								✓ You'll be redirected to complete your payment via PayMaya.
-							</p>
-						)}
-						{selectedMethod === "saleor" && (
-							<p>
-								✓ Select your preferred payment method from the options below.
 							</p>
 						)}
 					</div>

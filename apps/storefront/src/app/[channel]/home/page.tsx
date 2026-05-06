@@ -1,67 +1,242 @@
-import { Store, Users, Coffee, Heart } from "lucide-react";
+import { ArrowRight, Clock, Leaf, Heart } from "lucide-react";
+import { executeGraphQL } from "@saleor/shared/lib/graphql";
+import { ProductListPaginatedDocument, OrderDirection, ProductOrderField } from "@saleor/shared/gql/graphql";
+import Link from "next/link";
 import { PullToRefresh } from "@/components/PullToRefresh";
-//homepage
+import Image from "next/image";
 
-export default function HomePage() {
+export const metadata = {
+	title: "Home · ALFA-C Kiosk",
+	description: "Order food from ALFA-C Canteen Kiosk",
+};
+
+async function getPopularProducts(channel: string) {
+	try {
+		const { products } = await executeGraphQL(ProductListPaginatedDocument, {
+			variables: {
+				first: 4,
+				channel,
+				sortBy: {
+					field: ProductOrderField.Name,
+					direction: OrderDirection.Asc,
+				},
+			},
+			revalidate: 60,
+		});
+		return products?.edges.map((edge) => edge.node) || [];
+	} catch (error) {
+		console.error("Failed to fetch popular products:", error);
+		return [];
+	}
+}
+
+async function getNewProducts(channel: string) {
+	try {
+		const { products } = await executeGraphQL(ProductListPaginatedDocument, {
+			variables: {
+				first: 4,
+				channel,
+				sortBy: {
+					field: ProductOrderField.Name,
+					direction: OrderDirection.Desc,
+				},
+			},
+			revalidate: 60,
+		});
+		return products?.edges.map((edge) => edge.node) || [];
+	} catch (error) {
+		console.error("Failed to fetch new products:", error);
+		return [];
+	}
+}
+
+export default async function HomePage(props: {
+	params: Promise<{ channel: string }>;
+}) {
+	const { channel } = await props.params;
+
+	const [popularProducts, newProducts] = await Promise.all([
+		getPopularProducts(channel),
+		getNewProducts(channel),
+	]);
+
 	return (
 		<PullToRefresh>
-			<div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] px-6 py-8 pb-24">
-			{/* Logo/Welcome Section */}
-			<div className="text-center mb-8">
-				<div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-					<Store className="h-12 w-12 text-emerald-600" />
+			<div className="min-h-screen bg-white pb-24">
+				{/* Welcome Banner - Alfamart Red */}
+				<div className="bg-red-500 text-white px-6 py-8 mx-6 mt-6 rounded-2xl">
+					<h1 className="text-3xl font-bold mb-2">Welcome Back!</h1>
+					<p className="text-base mb-6 opacity-90">Skip the line, order ahead</p>
+					<Link
+						href={`/${encodeURIComponent(channel)}`}
+						className="inline-flex items-center gap-2 bg-white text-red-400 font-semibold px-6 py-3 rounded-full hover:bg-neutral-100 transition-colors"
+					>
+						Order Now
+						<ArrowRight className="w-5 h-5" />
+					</Link>
 				</div>
-				<h1 className="text-3xl font-bold text-neutral-900 mb-2">ALFA-C Kiosk</h1>
-				<p className="text-lg text-neutral-600">Canteen Ordering System</p>
-			</div>
 
-			{/* About Section */}
-			<div className="max-w-md w-full bg-neutral-50 rounded-xl p-6 mb-6">
-				<h2 className="text-xl font-semibold text-neutral-800 mb-4 flex items-center gap-2">
-					<Heart className="h-5 w-5 text-red-500" />
-					About This App
-				</h2>
-				<p className="text-neutral-600 leading-relaxed mb-4">
-					Welcome to the <strong>ALFA-C Canteen Kiosk App</strong>! This application was developed 
-					by the <strong>Alfamart IT Department</strong> to provide a seamless and convenient 
-					food ordering experience for our employees.
-				</p>
-				<p className="text-neutral-600 leading-relaxed">
-					Simply browse the menu, add items to your cart, and place your order. 
-					You&apos;ll receive a notification when your food is ready for pickup!
-				</p>
-			</div>
+				{/* Quick Actions */}
+				<div className="px-6 py-6">
+					<div className="grid grid-cols-2 gap-4">
+						{/* Quick Pickup */}
+						<div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+							<div className="flex items-start justify-between mb-3">
+								<div className="bg-blue-500 text-white p-2 rounded-lg">
+									<Clock className="w-5 h-5" />
+								</div>
+							</div>
+							<h3 className="text-sm font-semibold text-neutral-900 mb-1">Quick Pickup</h3>
+							<p className="text-xs text-neutral-600">Ready in 10-15 mins</p>
+						</div>
 
-			{/* Features */}
-			<div className="max-w-md w-full">
-				<h3 className="text-lg font-semibold text-neutral-800 mb-4 text-center">How It Works</h3>
-				<div className="grid grid-cols-3 gap-4">
-					<div className="flex flex-col items-center text-center">
-						<div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-							<Coffee className="h-6 w-6 text-blue-600" />
+						{/* Fresh Daily */}
+						<div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+							<div className="flex items-start justify-between mb-3">
+								<div className="bg-green-500 text-white p-2 rounded-lg">
+									<Leaf className="w-5 h-5" />
+								</div>
+							</div>
+							<h3 className="text-sm font-semibold text-neutral-900 mb-1">Fresh Daily</h3>
+							<p className="text-xs text-neutral-600">Prepared fresh</p>
 						</div>
-						<p className="text-sm text-neutral-600">Browse Menu</p>
-					</div>
-					<div className="flex flex-col items-center text-center">
-						<div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-2">
-							<Store className="h-6 w-6 text-orange-600" />
-						</div>
-						<p className="text-sm text-neutral-600">Place Order</p>
-					</div>
-					<div className="flex flex-col items-center text-center">
-						<div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
-							<Users className="h-6 w-6 text-green-600" />
-						</div>
-						<p className="text-sm text-neutral-600">Pick Up</p>
 					</div>
 				</div>
-			</div>
 
-			{/* Footer */}
-			<div className="mt-8 text-center text-sm text-neutral-400">
-				<p>Developed by Alfamart IT Department</p>
-				<p className="mt-1">© 2026 All Rights Reserved</p>
-			</div>
+				{/* Popular Today Section */}
+				{popularProducts.length > 0 && (
+					<div className="px-6 py-6">
+						<div className="flex items-center justify-between mb-4">
+							<h2 className="text-lg font-bold text-neutral-900">Popular Today</h2>
+							<Link
+								href={`/${encodeURIComponent(channel)}`}
+								className="text-red-500 font-medium text-sm hover:text-red-600"
+							>
+								See All
+							</Link>
+						</div>
+						<div className="grid grid-cols-2 gap-4">
+							{popularProducts.map((product) => {
+								const imageUrl = product.thumbnail?.url;
+								const imageAlt = product.thumbnail?.alt || product.name;
+								const price = product.pricing?.priceRange?.start?.gross?.amount || 0;
+
+								return (
+									<Link
+										key={product.id}
+										href={`/${encodeURIComponent(channel)}/products/${product.slug}`}
+										className="bg-white rounded-xl overflow-hidden border border-neutral-100 hover:border-red-300 transition-all hover:shadow-md"
+									>
+										<div className="relative w-full h-40 bg-neutral-100">
+											{imageUrl ? (
+												<Image
+													src={imageUrl}
+													alt={imageAlt}
+													fill
+													className="object-cover"
+												/>
+											) : (
+												<div className="w-full h-full bg-gradient-to-br from-neutral-200 to-neutral-300 flex items-center justify-center">
+													<span className="text-neutral-500 text-sm">No image</span>
+												</div>
+											)}
+										</div>
+										<div className="p-3">
+											<h3 className="text-sm font-semibold text-neutral-900 line-clamp-2">
+												{product.name}
+											</h3>
+											<p className="text-red-600 font-bold text-base mt-2">
+												₱{(price / 100).toFixed(2)}
+											</p>
+										</div>
+									</Link>
+								);
+							})}
+						</div>
+					</div>
+				)}
+
+				{/* New Menu Items Banner - Alfamart Yellow */}
+				<div className="mx-6 my-6 bg-gradient-to-r from-yellow-400 to-yellow-500 text-neutral-900 rounded-xl px-6 py-6">
+					<h3 className="text-lg font-bold mb-1">New Menu Items!</h3>
+					<p className="text-sm mb-4 opacity-90">Try our freshly added dishes this week</p>
+					<Link
+						href={`/${encodeURIComponent(channel)}`}
+						className="inline-flex items-center gap-2 bg-white text-yellow-600 font-semibold px-4 py-2 rounded-full hover:bg-neutral-100 transition-colors text-sm"
+					>
+						Explore Menu
+						<ArrowRight className="w-4 h-4" />
+					</Link>
+				</div>
+
+				{/* New Menu Items Grid */}
+				{newProducts.length > 0 && (
+					<div className="px-6 py-2">
+						<div className="grid grid-cols-2 gap-4">
+							{newProducts.map((product) => {
+								const imageUrl = product.thumbnail?.url;
+								const imageAlt = product.thumbnail?.alt || product.name;
+								const price = product.pricing?.priceRange?.start?.gross?.amount || 0;
+
+								return (
+									<Link
+										key={product.id}
+										href={`/${encodeURIComponent(channel)}/products/${product.slug}`}
+										className="bg-white rounded-xl overflow-hidden border border-neutral-100 hover:border-red-300 transition-all hover:shadow-md"
+									>
+										<div className="relative w-full h-40 bg-neutral-100">
+											{imageUrl ? (
+												<Image
+													src={imageUrl}
+													alt={imageAlt}
+													fill
+													className="object-cover"
+												/>
+											) : (
+												<div className="w-full h-full bg-gradient-to-br from-neutral-200 to-neutral-300 flex items-center justify-center">
+													<span className="text-neutral-500 text-sm">No image</span>
+												</div>
+											)}
+										</div>
+										<div className="p-3">
+											<h3 className="text-sm font-semibold text-neutral-900 line-clamp-2">
+												{product.name}
+											</h3>
+											<p className="text-red-600 font-bold text-base mt-2">
+												₱{(price / 100).toFixed(2)}
+											</p>
+										</div>
+									</Link>
+								);
+							})}
+						</div>
+					</div>
+				)}
+
+				{/* About This App Section */}
+				<div className="px-6 py-8">
+					<div className="bg-neutral-50 border border-neutral-200 rounded-xl p-6">
+						<h2 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+							<Heart className="w-5 h-5 text-red-500" />
+							About This App
+						</h2>
+						<p className="text-sm text-neutral-700 leading-relaxed mb-4">
+							Welcome to the <strong>ALFA-C Canteen Kiosk App</strong>! This application was developed 
+							by the <strong>Alfamart IT Department</strong> to provide a seamless and convenient 
+							food ordering experience for our employees.
+						</p>
+						<p className="text-sm text-neutral-700 leading-relaxed">
+							Simply browse the menu, add items to your cart, and place your order. 
+							You&apos;ll receive a notification when your food is ready for pickup!
+						</p>
+					</div>
+				</div>
+
+				{/* Footer */}
+				<div className="px-6 py-4 text-center border-t border-neutral-200 mt-6">
+					<p className="text-xs text-neutral-500">Developed by Alfamart IT Department</p>
+					<p className="text-xs text-neutral-500 mt-1">© 2026 All Rights Reserved</p>
+				</div>
 			</div>
 		</PullToRefresh>
 	);

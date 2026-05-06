@@ -16,7 +16,7 @@ import { savePendingPayrexOrder } from '@/checkout/lib/payrexFlow';
 interface PlaceOrderModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	cartItems?: Array<{ name: string; quantity: number; price: number }>;
+	cartItems?: Array<{ name: string; quantity: number; price: number; image?: string }>;
 	totalPrice?: number;
 }
 
@@ -69,6 +69,13 @@ export default function PlaceOrderModal({
 		setIsSubmitting(true);
 
 		try {
+			console.debug('[PlaceOrderModal] Submit started', {
+				checkoutId: checkout?.id,
+				itemCount: cartItems.length,
+				totalPrice,
+				pickupTime,
+			});
+
 			if (!checkout) {
 				alert('Checkout not ready yet. Please try again.');
 				return;
@@ -142,7 +149,7 @@ export default function PlaceOrderModal({
 				}
 			}
 
-			savePendingPayrexOrder({
+			const pendingOrder = {
 				checkoutId: checkout.id,
 				customerName: customerName.trim(),
 				customerEmail: email.trim(),
@@ -151,7 +158,16 @@ export default function PlaceOrderModal({
 				totalPrice: Number(totalPrice || 0),
 				items: cartItems,
 				createdAt: new Date().toISOString(),
+			};
+
+			console.debug('[PlaceOrderModal] Persisting pending order before PayRex redirect', {
+				checkoutId: pendingOrder.checkoutId,
+				itemCount: pendingOrder.items.length,
+				currency: pendingOrder.currency,
+				totalPrice: pendingOrder.totalPrice,
 			});
+
+			savePendingPayrexOrder(pendingOrder);
 
 			const appUrl = window.location.origin;
 			const response = await fetch('/api/payrex/create-payment', {
@@ -175,8 +191,19 @@ export default function PlaceOrderModal({
 			});
 
 			const data = await response.json();
+			console.debug('[PlaceOrderModal] PayRex create-payment response', {
+				ok: response.ok,
+				status: response.status,
+				hasCheckoutUrl: !!data?.checkoutUrl,
+				hasSessionId: !!data?.sessionId,
+				responseKeys: data ? Object.keys(data) : [],
+			});
 			if (!response.ok || !data?.checkoutUrl) {
 				const message = data?.details || data?.error || 'Failed to start PayRex payment.';
+				console.error('[PlaceOrderModal] Failed to start PayRex payment', {
+					status: response.status,
+					details: data,
+				});
 				alert(String(message));
 				return;
 			}
@@ -188,9 +215,14 @@ export default function PlaceOrderModal({
 			if (data.sessionId) {
 				sessionStorage.setItem('payrexSessionId', String(data.sessionId));
 			}
+			console.debug('[PlaceOrderModal] Redirecting to PayRex', {
+				checkoutId: checkout.id,
+				sessionId: data.sessionId || null,
+				checkoutUrl: data.checkoutUrl,
+			});
 			window.location.href = data.checkoutUrl;
 		} catch (error) {
-			console.error('Checkout completion failed:', error);
+			console.error('[PlaceOrderModal] Failed to start payment', error);
 			alert('Failed to start payment. Please try again.');
 		} finally {
 			setIsSubmitting(false);

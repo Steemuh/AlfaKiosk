@@ -28,13 +28,11 @@ const CHECKOUT_COMPLETE_MUTATION = /* GraphQL */ `
 					}
 				}
 				lines {
-					id
 					productName
 					quantity
 					unitPrice {
 						gross {
 							amount
-							currency
 						}
 					}
 				}
@@ -47,10 +45,27 @@ const CHECKOUT_COMPLETE_MUTATION = /* GraphQL */ `
 	}
 `;
 
-const fetchSaleorGraphQL = async <TResult, TVariables extends Record<string, unknown>>(
-	query: string,
-	variables: TVariables,
-): Promise<TResult> => {
+type CheckoutCompleteResponse = {
+	data?: {
+		checkoutComplete?: {
+			errors?: Array<{ field?: string | null; message?: string | null; code?: string | null }>;
+			order?: {
+				id: string;
+				number?: string | null;
+				total?: { gross?: { amount?: number | null; currency?: string | null } | null } | null;
+				lines?: Array<{
+					productName: string;
+					quantity: number;
+					unitPrice?: { gross?: { amount?: number | null } | null } | null;
+				}>;
+				billingAddress?: { firstName?: string | null; lastName?: string | null } | null;
+			} | null;
+		};
+	};
+	errors?: Array<{ message?: string }>;
+};
+
+const completeCheckout = async (checkoutId: string) => {
 	if (!SALEOR_API_URL) {
 		throw new Error("Missing NEXT_PUBLIC_SALEOR_API_URL env variable");
 	}
@@ -60,11 +75,14 @@ const fetchSaleorGraphQL = async <TResult, TVariables extends Record<string, unk
 		headers: {
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify({ query, variables }),
+		body: JSON.stringify({
+			query: CHECKOUT_COMPLETE_MUTATION,
+			variables: { checkoutId },
+		}),
 		cache: "no-store",
 	});
 
-	const data = await response.json();
+	const data = (await response.json()) as CheckoutCompleteResponse;
 	if (!response.ok) {
 		throw new Error(data?.errors?.[0]?.message || `Saleor request failed (${response.status})`);
 	}
@@ -73,7 +91,19 @@ const fetchSaleorGraphQL = async <TResult, TVariables extends Record<string, unk
 		throw new Error(data.errors[0]?.message || "Saleor GraphQL error");
 	}
 
-	return data as TResult;
+	const checkoutComplete = data?.data?.checkoutComplete;
+	if (!checkoutComplete) {
+		throw new Error("Saleor checkoutComplete returned no payload.");
+	}
+
+	if ((checkoutComplete.errors ?? []).length > 0 || !checkoutComplete.order) {
+		const errorDetail = (checkoutComplete.errors ?? [])
+			.map((error) => [error.code, error.field, error.message].filter(Boolean).join(": "))
+			.join(" | ");
+		throw new Error(errorDetail || "Failed to place order in Saleor.");
+	}
+
+	return checkoutComplete.order;
 };
 
 export const PaymentSuccessClient = () => {
@@ -92,19 +122,41 @@ export const PaymentSuccessClient = () => {
 
 	useEffect(() => {
 		const sessionFromQuery = searchParams.get("session_id") || searchParams.get("sessionId");
-		const checkoutId = searchParams.get("checkoutId") || searchParams.get("checkout_id");
+		const checkoutIdFromQuery = searchParams.get("checkoutId") || searchParams.get("checkout_id");
+		const storedSessionId = sessionStorage.getItem("payrexSessionId");
+		const storedCheckoutId = sessionStorage.getItem("payrexCheckoutId");
+		const storedPendingOrder = readPendingPayrexOrder();
+		const resolvedSessionId = sessionFromQuery || storedSessionId || null;
+		const resolvedCheckoutId = checkoutIdFromQuery || storedCheckoutId || storedPendingOrder?.checkoutId || null;
 
-		if (!sessionFromQuery || !checkoutId) {
+		console.debug("[PaymentSuccessClient] Loaded payment context", {
+			querySessionId: sessionFromQuery,
+			queryCheckoutId: checkoutIdFromQuery,
+			storedSessionId,
+			storedCheckoutId,
+			hasPendingOrder: !!storedPendingOrder,
+			resolvedSessionId,
+			resolvedCheckoutId,
+		});
+
+		if (!resolvedSessionId || !resolvedCheckoutId) {
 			setStatus("error");
 			setMessage("Missing payment session information.");
+			console.warn("[PaymentSuccessClient] Missing payment session information", {
+				querySessionId: sessionFromQuery,
+				queryCheckoutId: checkoutIdFromQuery,
+				storedSessionId,
+				storedCheckoutId,
+				hasPendingOrder: !!storedPendingOrder,
+			});
 			return;
 		}
 
-		setSessionId(sessionFromQuery);
+		setSessionId(resolvedSessionId);
 		sessionStorage.setItem("payrexPaymentStatus", "success");
 		sessionStorage.setItem("payrexPaidAt", new Date().toISOString());
-		sessionStorage.setItem("payrexCheckoutId", checkoutId);
-		sessionStorage.setItem("payrexSessionId", sessionFromQuery);
+		sessionStorage.setItem("payrexCheckoutId", resolvedCheckoutId);
+		sessionStorage.setItem("payrexSessionId", resolvedSessionId);
 
 		const finalizeOrder = async () => {
 			if (hasFinalizedRef.current) {
@@ -115,17 +167,38 @@ export const PaymentSuccessClient = () => {
 			setStatus("verifying");
 			setMessage("Checking your PayRex payment...");
 
-			const storedOrder = readPendingPayrexOrder();
-			if (!storedOrder || storedOrder.checkoutId !== checkoutId) {
+			const storedOrder = storedPendingOrder || readPendingPayrexOrder();
+			console.debug("[PaymentSuccessClient] Pending order loaded for finalization", {
+				hasStoredOrder: !!storedOrder,
+				storedOrderCheckoutId: storedOrder?.checkoutId,
+				resolvedCheckoutId,
+				resolvedSessionId,
+			});
+			if (!storedOrder || storedOrder.checkoutId !== resolvedCheckoutId) {
 				setStatus("error");
 				setMessage("We could not find your pending order details. Please contact support.");
+				console.warn("[PaymentSuccessClient] Pending order checkoutId mismatch", {
+					storedCheckoutId: storedOrder?.checkoutId,
+					resolvedCheckoutId,
+				});
 				return;
 			}
 
 			try {
-				const response = await fetch(`/api/payrex/session?sessionId=${encodeURIComponent(sessionFromQuery)}`);
+				console.debug("[PaymentSuccessClient] Verifying PayRex session", {
+					sessionId: resolvedSessionId,
+					checkoutId: resolvedCheckoutId,
+				});
+				const response = await fetch(`/api/payrex/session?sessionId=${encodeURIComponent(resolvedSessionId)}`);
 				const data = await response.json();
 				const session = data.session;
+				console.debug("[PaymentSuccessClient] PayRex session response", {
+					ok: response.ok,
+					status: response.status,
+					hasSession: !!session,
+					responseKeys: data ? Object.keys(data) : [],
+					sessionKeys: session ? Object.keys(session) : [],
+				});
 
 				if (!response.ok || !session) {
 					throw new Error(data?.error || "Unable to verify PayRex session.");
@@ -157,6 +230,13 @@ export const PaymentSuccessClient = () => {
 					storedOrder.customerEmail;
 				const pickupTime = session?.metadata?.pickup_time || storedOrder.pickupTime;
 				const amount = Number(session?.metadata?.amount || storedOrder.totalPrice || 0);
+				console.debug("[PaymentSuccessClient] Resolved payment summary", {
+					customerName,
+					customerEmail,
+					pickupTime,
+					amount,
+					normalizedStatus,
+				});
 
 				setPaymentSummary({
 					customerName,
@@ -168,50 +248,23 @@ export const PaymentSuccessClient = () => {
 				setStatus("placing");
 				setMessage("Creating your order...");
 
-				const completionResult = await fetchSaleorGraphQL<{
-					checkoutComplete?: {
-						errors?: Array<{ field?: string | null; message?: string | null; code?: string | null }>;
-						order?: {
-							id: string;
-							number?: string | null;
-							total?: { gross?: { amount?: number | null; currency?: string | null } | null } | null;
-							lines?: Array<{
-								id: string;
-								productName: string;
-								quantity: number;
-								unitPrice?: { gross?: { amount?: number | null; currency?: string | null } | null } | null;
-							}>;
-							billingAddress?: { firstName?: string | null; lastName?: string | null } | null;
-						} | null;
-					} | null;
-				}, { checkoutId: string }>(CHECKOUT_COMPLETE_MUTATION, {
-					checkoutId,
-				});
+				const completedOrder = await completeCheckout(resolvedCheckoutId);
 
-				const completedOrder = completionResult.checkoutComplete?.order;
-				const checkoutErrors = completionResult.checkoutComplete?.errors ?? [];
-				if (checkoutErrors.length > 0 || !completedOrder) {
-					throw new Error(checkoutErrors[0]?.message || "Failed to place the Saleor order.");
-				}
-
-				const items = completedOrder.lines?.map((line) => ({
-					name: line.productName || "Item",
-					quantity: line.quantity,
-					price: line.unitPrice?.gross?.amount || 0,
-				})) || [];
-				const resolvedCustomerName = customerName || [
-					completedOrder.billingAddress?.firstName,
-					completedOrder.billingAddress?.lastName,
-				].filter(Boolean).join(" ").trim() || "Customer";
-+
 				addOrder({
 					orderId: completedOrder.number || completedOrder.id,
-					customerName: resolvedCustomerName,
+					customerName: customerName || "Customer",
 					customerEmail,
 					pickupTime: pickupTime || "ASAP",
-					items,
+					items: completedOrder.lines?.map((line) => ({
+						name: line.productName || "Item",
+						quantity: line.quantity,
+						price: line.unitPrice?.gross?.amount || 0,
+					})) || storedOrder.items,
 					status: "new",
 					totalPrice: completedOrder.total?.gross?.amount || amount,
+					paymentStatus: "paid",
+					paymentMethod: "gcash",
+					payrexPaymentId: session?.id || resolvedSessionId,
 				});
 
 				await fetch("/api/payrex/attach-order", {
@@ -221,12 +274,12 @@ export const PaymentSuccessClient = () => {
 					},
 					body: JSON.stringify({
 						orderId: completedOrder.id,
-						payrexPaymentId: session?.id || sessionId || sessionFromQuery,
+						payrexPaymentId: session?.id || resolvedSessionId,
 						paymentMethod: "gcash",
 						paymentStatus: "paid",
 						paidAmount: amount,
 						paidAt: new Date().toISOString(),
-						customerName: resolvedCustomerName,
+						customerName: customerName || "Customer",
 						customerEmail,
 						pickupTime,
 						cashierStatus: "new",
@@ -236,11 +289,14 @@ export const PaymentSuccessClient = () => {
 				clearPendingPayrexOrder();
 				sessionStorage.removeItem("payrexPaymentStatus");
 				sessionStorage.removeItem("payrexReturnToCheckout");
+				sessionStorage.removeItem("payrexSessionId");
+				sessionStorage.removeItem("payrexCheckoutId");
 				setStatus("done");
 				setMessage("Your order has been sent to the cashier.");
 			} catch (error) {
 				hasFinalizedRef.current = false;
 				setStatus("error");
+				console.error("[PaymentSuccessClient] finalizeOrder failed", error);
 				setMessage(error instanceof Error ? error.message : "Failed to finalize your order.");
 			}
 		};

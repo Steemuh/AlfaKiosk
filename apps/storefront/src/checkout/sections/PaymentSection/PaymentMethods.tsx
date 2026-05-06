@@ -55,53 +55,11 @@ export const PaymentMethods = ({
 		return <PayRexCheckout />;
 	}
 
-	// Show Saleor gateways if "saleor" is selected or if no method selected yet
-	if (selectedMethod === "saleor" || selectedMethod === null) {
-		// If still fetching Saleor gateways, show skeleton
-		if (fetching) {
-			return <PaymentSectionSkeleton />;
-		}
-
-		// If no Saleor gateways available, show message
-		if (gatewaysWithDefinedComponent.length === 0) {
-			return (
-				<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-					<p className="text-sm text-yellow-800">
-						<strong>Note:</strong> No other payment methods currently available.
-						Please select GCash via PayRex above.
-					</p>
-				</div>
-			);
-		}
-
-		// Show available Saleor gateways
-		return (
-			<div className="gap-y-8">
-				{gatewaysWithDefinedComponent.map((gateway) => {
-					const Component = paymentMethodToComponent[gateway.id];
-					return (
-						<Component
-							key={gateway.id}
-							// @ts-expect-error -- gateway matches the id but TypeScript doesn't know that
-							config={gateway}
-						/>
-					);
-				})}
-			</div>
-		);
-	}
-
-	// PayMaya not yet implemented
-	if (selectedMethod === "paymaya") {
-		return (
-			<div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
-				<p className="text-sm text-orange-800">
-					<strong>Coming Soon:</strong> PayMaya payment method is not yet
-					available. Please select GCash via PayRex instead.
-				</p>
-			</div>
-		);
-	}
-
-	return null;
+	return (
+		<div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+			<p className="text-sm text-blue-800">
+				<strong>GCash only:</strong> PayRex checkout is the only payment method available for this kiosk flow.
+			</p>
+		</div>
+	);
 };
