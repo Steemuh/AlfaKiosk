@@ -65,10 +65,6 @@ export default function PreparingOrdersTab({ theme = 'dark' }: { theme?: 'light'
 		}
 	};
 
-	const handleViewDetails = (orderId: string) => {
-		console.log('View details for order:', orderId);
-	};
-
 	if (!mounted) {
 		return null;
 	}
@@ -111,9 +107,10 @@ export default function PreparingOrdersTab({ theme = 'dark' }: { theme?: 'light'
 										elapsedTime: `${elapsedTime} min ago`,
 										items: order.items,
 									}}
-									onAccept={() => handleViewDetails(order.id)}
+										onAccept={() => {}}
 									onReject={() => handleMarkReady(order.id)}
 									showActions={true}
+										expandOnAccept={true}
 									actionLabels={{
 										accept: 'View Items',
 										reject: 'Mark Ready',

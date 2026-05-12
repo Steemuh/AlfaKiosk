@@ -2,25 +2,118 @@
 
 import { useState, useEffect } from 'react';
 import { useStoreStatusStore } from '../../lib/storeStatusStore';
-import { useOrderStore } from '@saleor/shared/lib/orderStore';
 
 interface StoreStatusPageProps {
 	theme: 'light' | 'dark';
 }
 
+type PopularProduct = {
+	id: string;
+	name: string;
+	slug: string;
+	thumbnail?: { url?: string; alt?: string } | null;
+};
+
 export default function StoreStatusPage({ theme }: StoreStatusPageProps) {
-	const { status, setStoreOpen, setStaffOnDuty, setOrdersInProgress, setDeliveryAvailable, setTakeoutAvailable, setDineInAvailable } = useStoreStatusStore();
-	const { orders } = useOrderStore();
+	const { status, setStoreOpen, setStaffOnDuty } = useStoreStatusStore();
 	const [showCloseModal, setShowCloseModal] = useState(false);
 	const [closureReason, setClosureReason] = useState('');
 	const [mounted, setMounted] = useState(false);
+	const [popularSearch, setPopularSearch] = useState('');
+	const [popularResults, setPopularResults] = useState<PopularProduct[]>([]);
+	const [selectedPopularIds, setSelectedPopularIds] = useState<string[]>([]);
+	const [popularLoading, setPopularLoading] = useState(false);
+	const [popularError, setPopularError] = useState<string | null>(null);
+	const [popularSaving, setPopularSaving] = useState(false);
+	const [popularCatalog, setPopularCatalog] = useState<Record<string, PopularProduct>>({});
 
 	useEffect(() => {
 		setMounted(true);
-		// Update orders in progress count
-		const preparingOrders = orders.filter(o => o.status === 'preparing').length;
-		setOrdersInProgress(preparingOrders);
-	}, [orders, setOrdersInProgress]);
+	}, []);
+
+	const mergePopularCatalog = (products: PopularProduct[]) => {
+		setPopularCatalog((prev) => {
+			const next = { ...prev };
+			products.forEach((product) => {
+				next[product.id] = product;
+			});
+			return next;
+		});
+	};
+
+	useEffect(() => {
+		if (!mounted) {
+			return;
+		}
+
+		let isActive = true;
+
+		const loadPopular = async () => {
+			setPopularLoading(true);
+			try {
+				const response = await fetch('/api/popular-today');
+				const data = await response.json();
+				if (!response.ok || !data?.ok) {
+					throw new Error(data?.error || 'Failed to load popular items');
+				}
+				if (isActive) {
+					const nextProducts = Array.isArray(data.products) ? data.products : [];
+					setSelectedPopularIds(Array.isArray(data.selectedIds) ? data.selectedIds : []);
+					setPopularResults(nextProducts);
+					mergePopularCatalog(nextProducts);
+					setPopularError(null);
+				}
+			} catch (error) {
+				if (isActive) {
+					setPopularError(error instanceof Error ? error.message : 'Failed to load popular items');
+				}
+			} finally {
+				if (isActive) {
+					setPopularLoading(false);
+				}
+			}
+		};
+
+		loadPopular();
+
+		return () => {
+			isActive = false;
+		};
+	}, [mounted]);
+
+	useEffect(() => {
+		if (!mounted) {
+			return;
+		}
+
+		const handler = window.setTimeout(async () => {
+			if (!popularSearch.trim()) {
+				setPopularResults([]);
+				return;
+			}
+
+			try {
+				setPopularLoading(true);
+				const response = await fetch(`/api/popular-today/products?search=${encodeURIComponent(popularSearch.trim())}`);
+				const data = await response.json();
+				if (!response.ok || !data?.ok) {
+					throw new Error(data?.error || 'Failed to search products');
+				}
+				const nextProducts = Array.isArray(data.products) ? data.products : [];
+				setPopularResults(nextProducts);
+				mergePopularCatalog(nextProducts);
+				setPopularError(null);
+			} catch (error) {
+				setPopularError(error instanceof Error ? error.message : 'Failed to search products');
+			} finally {
+				setPopularLoading(false);
+			}
+		}, 350);
+
+		return () => {
+			window.clearTimeout(handler);
+		};
+	}, [popularSearch, mounted]);
 
 	if (!mounted) {
 		return null;
@@ -46,75 +139,38 @@ export default function StoreStatusPage({ theme }: StoreStatusPageProps) {
 		}).catch(err => console.error('Failed to update store status on server:', err));
 	};
 
-	const StatusIndicator = ({
-		label,
-		status,
-		icon,
-	}: {
-		label: string;
-		status: 'online' | 'offline' | 'warning';
-		icon: string;
-	}) => {
-		const statusColors = {
-			online:
-				theme === 'light'
-					? 'bg-green-50 border-green-300 text-green-900'
-					: 'bg-green-900/30 border-green-700 text-green-300',
-			offline:
-				theme === 'light'
-					? 'bg-red-50 border-red-300 text-red-900'
-					: 'bg-red-900/30 border-red-700 text-red-900',
-			warning:
-				theme === 'light'
-					? 'bg-yellow-50 border-yellow-300 text-yellow-900'
-					: 'bg-yellow-900/30 border-yellow-700 text-yellow-300',
-		};
-
-		const statusDots = {
-			online: '🟢',
-			offline: '🔴',
-			warning: '🟡',
-		};
-
-		return (
-			<div className={`p-4 rounded-lg border-2 ${statusColors[status]}`}>
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-3">
-						<span className="text-2xl">{icon}</span>
-						<div>
-							<p className="font-semibold">{label}</p>
-							<p className="text-xs opacity-75 mt-1">
-								{status === 'online' && 'System operational'}
-								{status === 'offline' && 'System unavailable'}
-								{status === 'warning' && 'Requires attention'}
-							</p>
-						</div>
-					</div>
-					<span className="text-2xl">{statusDots[status]}</span>
-				</div>
-			</div>
-		);
+	const togglePopularSelection = (id: string) => {
+		setSelectedPopularIds((current) => {
+			if (current.includes(id)) {
+				return current.filter((entry) => entry !== id);
+			}
+			if (current.length >= 6) {
+				return current;
+			}
+			return [...current, id];
+		});
 	};
 
-	const ServiceToggle = ({ label, enabled, onChange }: { label: string; enabled: boolean; onChange: (v: boolean) => void }) => (
-		<div className={`p-4 rounded-lg border-2 flex items-center justify-between ${
-			theme === 'light'
-				? 'bg-white border-slate-200 hover:border-slate-300'
-				: 'bg-slate-800 border-slate-700 hover:border-slate-600'
-		}`}>
-			<p className="font-semibold">{label}</p>
-			<button
-				onClick={() => onChange(!enabled)}
-				className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-					enabled
-						? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-						: 'bg-slate-400 hover:bg-slate-500 text-white'
-				}`}
-			>
-				{enabled ? 'Available' : 'Unavailable'}
-			</button>
-		</div>
-	);
+	const handleSavePopular = async () => {
+		try {
+			setPopularSaving(true);
+			const response = await fetch('/api/popular-today', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ ids: selectedPopularIds }),
+			});
+			const data = await response.json();
+			if (!response.ok || !data?.ok) {
+				throw new Error(data?.error || 'Failed to save popular items');
+			}
+			setPopularError(null);
+		} catch (error) {
+			setPopularError(error instanceof Error ? error.message : 'Failed to save popular items');
+		} finally {
+			setPopularSaving(false);
+		}
+	};
+
 
 	return (
 		<div className="space-y-6">
@@ -175,48 +231,150 @@ export default function StoreStatusPage({ theme }: StoreStatusPageProps) {
 				)}
 			</div>
 
-			{/* Key Metrics */}
-			<div>
-				<h3 className={`font-semibold mb-4 ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
-					Current Operations
-				</h3>
-				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-					<div className={`p-4 rounded-lg border-2 ${theme === 'light' ? 'bg-blue-50 border-blue-300 text-blue-900' : 'bg-blue-900/30 border-blue-700 text-blue-300'}`}>
-						<p className="text-sm opacity-75">Staff On Duty</p>
-						<p className="text-3xl font-bold mt-2">{status.staffOnDuty}</p>
-					</div>
-					<div className={`p-4 rounded-lg border-2 ${theme === 'light' ? 'bg-purple-50 border-purple-300 text-purple-900' : 'bg-purple-900/30 border-purple-700 text-purple-300'}`}>
-						<p className="text-sm opacity-75">Orders Preparing</p>
-						<p className="text-3xl font-bold mt-2">{status.ordersInProgress}</p>
-					</div>
-					<div className={`p-4 rounded-lg border-2 ${theme === 'light' ? 'bg-orange-50 border-orange-300 text-orange-900' : 'bg-orange-900/30 border-orange-700 text-orange-300'}`}>
-						<p className="text-sm opacity-75">Last Updated</p>
-						<p className="text-sm font-semibold mt-2">{new Date(status.lastUpdated).toLocaleTimeString()}</p>
-					</div>
-				</div>
-			</div>
 
-			{/* Service Availability */}
+			{/* Popular Today Manager */}
 			<div>
 				<h3 className={`font-semibold mb-4 ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
-					Service Availability
+					Popular Today Manager
 				</h3>
-				<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-					<ServiceToggle 
-						label="🚚 Delivery" 
-						enabled={status.deliveryAvailable}
-						onChange={setDeliveryAvailable}
-					/>
-					<ServiceToggle 
-						label="📦 Takeout" 
-						enabled={status.takeoutAvailable}
-						onChange={setTakeoutAvailable}
-					/>
-					<ServiceToggle 
-						label="🪑 Dine-In" 
-						enabled={status.dineInAvailable}
-						onChange={setDineInAvailable}
-					/>
+				<div className={`p-4 rounded-lg border-2 ${theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-800 border-slate-700'}`}>
+					<div className="flex flex-col gap-3">
+						<div className="flex flex-col sm:flex-row sm:items-center gap-3">
+							<input
+								type="text"
+								value={popularSearch}
+								onChange={(event) => setPopularSearch(event.target.value)}
+								placeholder="Search products to feature"
+								className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${theme === 'light' ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-600 bg-slate-900 text-white'}`}
+							/>
+							<div className={`text-xs ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+								Selected {selectedPopularIds.length} / 6
+							</div>
+						</div>
+
+						{popularError && (
+							<p className="text-sm text-red-500">{popularError}</p>
+						)}
+
+						{popularLoading && (
+							<p className={`text-sm ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+								Loading...
+							</p>
+						)}
+
+						<div>
+							<p className={`text-xs font-semibold uppercase tracking-wide ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+								Selected Items
+							</p>
+							{selectedPopularIds.length === 0 ? (
+								<p className={`mt-2 text-sm ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+									No popular items selected yet.
+								</p>
+							) : (
+								<div className="mt-3 space-y-2">
+									{selectedPopularIds.map((id) => {
+										const product = popularCatalog[id];
+										return (
+											<div
+												key={id}
+												className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+													theme === 'light'
+														? 'border-emerald-200 bg-emerald-50'
+														: 'border-emerald-700 bg-emerald-900/30'
+												}`}
+											>
+												<div className="flex items-center gap-3 min-w-0">
+													<div className="h-10 w-10 rounded-md bg-slate-200 overflow-hidden flex-shrink-0">
+														{product?.thumbnail?.url ? (
+															<img src={product.thumbnail.url} alt={product.thumbnail.alt || product.name} className="h-full w-full object-cover" />
+														) : null}
+													</div>
+													<div className="min-w-0">
+														<p className={`text-sm font-semibold truncate ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+															{product?.name ?? 'Selected item'}
+														</p>
+														<p className={`text-xs ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+															{product?.slug ?? id}
+														</p>
+													</div>
+												</div>
+												<button
+													onClick={() => togglePopularSelection(id)}
+													className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+														theme === 'light'
+															? 'bg-white text-red-600 hover:bg-red-50'
+															: 'bg-slate-800 text-red-300 hover:bg-slate-700'
+													}`}
+												>
+													Remove
+												</button>
+											</div>
+										);
+									})}
+								</div>
+							)}
+						</div>
+
+						<div className="mt-4">
+							<p className={`text-xs font-semibold uppercase tracking-wide ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+								Search Results
+							</p>
+							<div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+							{popularResults.map((product) => {
+								const isSelected = selectedPopularIds.includes(product.id);
+								return (
+									<button
+										key={product.id}
+										className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+											isSelected
+												? theme === 'light'
+													? 'border-emerald-400 bg-emerald-50'
+													: 'border-emerald-500 bg-emerald-900/30'
+											: theme === 'light'
+											? 'border-slate-200 bg-white hover:bg-slate-50'
+											: 'border-slate-700 bg-slate-900 hover:bg-slate-800'
+										}`}
+										onClick={() => togglePopularSelection(product.id)}
+										disabled={!isSelected && selectedPopularIds.length >= 6}
+									>
+										<div className="h-12 w-12 rounded-md bg-slate-200 overflow-hidden flex-shrink-0">
+											{product.thumbnail?.url ? (
+												<img src={product.thumbnail.url} alt={product.thumbnail.alt || product.name} className="h-full w-full object-cover" />
+											) : null}
+										</div>
+										<div className="min-w-0">
+											<p className={`text-sm font-semibold truncate ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+												{product.name}
+											</p>
+											<p className={`text-xs ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+												{product.slug}
+											</p>
+										</div>
+											<div className="ml-auto">
+												<span className={`text-xs font-semibold ${isSelected ? 'text-emerald-600' : theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+													{isSelected ? 'Selected' : 'Tap to add'}
+												</span>
+											</div>
+									</button>
+								);
+							})}
+							</div>
+						</div>
+
+						<div className="flex items-center justify-end">
+							<button
+								onClick={handleSavePopular}
+								disabled={popularSaving}
+								className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+									popularSaving
+										? 'bg-slate-300 text-slate-600'
+										: 'bg-emerald-600 text-white hover:bg-emerald-700'
+								}`}
+							>
+								{popularSaving ? 'Saving...' : 'Save Popular Today'}
+							</button>
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -244,20 +402,6 @@ export default function StoreStatusPage({ theme }: StoreStatusPageProps) {
 				</div>
 			</div>
 
-			{/* System Status Grid */}
-			<div>
-				<h3 className={`font-semibold mb-4 ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
-					System Status
-				</h3>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<StatusIndicator label="POS System" status="online" icon="💻" />
-					<StatusIndicator label="Order Management" status="online" icon="📦" />
-					<StatusIndicator label="Payment Gateway" status="online" icon="💳" />
-					<StatusIndicator label="Database" status="online" icon="🗄️" />
-					<StatusIndicator label="Kitchen Display" status="online" icon="📺" />
-					<StatusIndicator label="Network" status="online" icon="🌐" />
-				</div>
-			</div>
 
 			{/* Operating Hours */}
 			<div>

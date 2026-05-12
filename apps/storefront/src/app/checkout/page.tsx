@@ -14,7 +14,7 @@ export default async function CheckoutPage() {
 
 	return (
 		<PullToRefresh>
-			<div className="min-h-dvh bg-white pb-20">
+			<div className="min-h-dvh bg-[#FFF7ED] pb-20">
 				<section className="mx-auto flex min-h-dvh max-w-7xl flex-col p-8">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center font-bold">

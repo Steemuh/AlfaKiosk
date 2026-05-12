@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Utensils, ShoppingCart, ClipboardList } from "lucide-react";
 import clsx from "clsx";
@@ -11,27 +12,50 @@ interface BottomNavBarProps {
 export const BottomNavBar = ({ channel }: BottomNavBarProps) => {
 	const pathname = usePathname();
 	const router = useRouter();
+	const [cartCount, setCartCount] = useState(0);
+	const [cartUrl, setCartUrl] = useState("/checkout");
 
-	const getCheckoutUrl = () => {
-		if (typeof document === "undefined") {
-			return "/checkout";
+	const loadCartSummary = async () => {
+		try {
+			const response = await fetch(`/api/checkout/summary?channel=${encodeURIComponent(channel)}`, {
+				cache: "no-store",
+			});
+			if (!response.ok) {
+				return;
+			}
+			const data = (await response.json()) as { lineCount?: number; checkoutUrl?: string };
+			setCartCount(typeof data.lineCount === "number" ? data.lineCount : 0);
+			setCartUrl(data.checkoutUrl || "/checkout");
+		} catch {
+			// Ignore fetch errors; keep last known state.
 		}
-
-		const cookieName = `checkoutId-${channel}=`;
-		const matchingCookie = document.cookie
-			.split(";")
-			.map((cookie) => cookie.trim())
-			.find((cookie) => cookie.startsWith(cookieName));
-
-		if (!matchingCookie) {
-			return "/checkout";
-		}
-
-		const checkoutId = decodeURIComponent(matchingCookie.slice(cookieName.length));
-		return checkoutId ? `/checkout?checkout=${checkoutId}` : "/checkout";
 	};
 
-	const navItems = [
+	useEffect(() => {
+		loadCartSummary();
+
+		const handleUpdate = () => {
+			loadCartSummary();
+		};
+
+		window.addEventListener("cart:updated", handleUpdate);
+		window.addEventListener("focus", handleUpdate);
+
+		return () => {
+			window.removeEventListener("cart:updated", handleUpdate);
+			window.removeEventListener("focus", handleUpdate);
+		};
+	}, [channel]);
+
+	// `getCheckoutUrl` removed — use `cartUrl` state (updated by `loadCartSummary`)
+
+	const navItems: Array<{
+		label: string;
+		icon: typeof Home;
+		path: string;
+		getPath?: () => string;
+		badge?: number;
+	}> = [
 		{
 			label: "Home",
 			icon: Home,
@@ -46,7 +70,8 @@ export const BottomNavBar = ({ channel }: BottomNavBarProps) => {
 			label: "Cart",
 			icon: ShoppingCart,
 			path: `/checkout`,
-			getPath: getCheckoutUrl,
+			getPath: () => cartUrl || "/checkout",
+			badge: cartCount,
 		},
 		{
 			label: "Orders",
@@ -82,7 +107,19 @@ export const BottomNavBar = ({ channel }: BottomNavBarProps) => {
 									: "text-neutral-500 hover:text-neutral-700"
 							)}
 						>
-							<Icon className={clsx("h-5 w-5", active && "stroke-[2.5]")} />
+							<span className="relative">
+								<Icon className={clsx("h-5 w-5", active && "stroke-[2.5]")} />
+								{item.badge && item.badge > 0 ? (
+									<span
+										className={clsx(
+											"absolute -right-2 -top-2 flex h-4 items-center justify-center rounded bg-neutral-900 text-[10px] font-semibold text-white",
+											item.badge > 9 ? "w-[3ch]" : "w-[2ch]",
+										)}
+									>
+										{item.badge}
+									</span>
+								) : null}
+							</span>
 							<span className={clsx("text-[10px] leading-none", active ? "font-semibold" : "font-medium")}>
 								{item.label}
 							</span>

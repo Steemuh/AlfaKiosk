@@ -8,6 +8,6 @@ body {
 
 :root {
 	--canteen-sidebar-width: 18vw;
-	--canteen-sidebar-top: 80px;
-	--canteen-sidebar-height: calc(100vh - 80px - 64px);
+	--canteen-sidebar-top: 96px;
+	--canteen-sidebar-height: calc(100vh - 96px - 64px);
 }

@@ -205,7 +205,7 @@ export default async function Page(props: { params: Promise<{ channel: string }>
 
 		return (
 			<PullToRefresh>
-				<div className="flex">
+				<div className="flex bg-[#FFF7ED]">
 					{sidebarCategories.length > 0 && (
 						<CanteenSidebar categories={sidebarCategories} channel={channel} />
 					)}

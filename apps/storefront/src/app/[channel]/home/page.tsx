@@ -10,11 +10,94 @@ export const metadata = {
 	description: "Order food from ALFA-C Canteen Kiosk",
 };
 
-async function getPopularProducts(channel: string) {
+const SHOP_QUERY = /* GraphQL */ `
+  query PopularTodayShop {
+    shop {
+      id
+      metadata {
+        key
+        value
+      }
+    }
+  }
+`;
+
+const PRODUCTS_BY_IDS_QUERY = /* GraphQL */ `
+  query PopularTodayProducts($ids: [ID!], $channel: String!) {
+    products(first: 12, channel: $channel, filter: { ids: $ids }) {
+      edges {
+        node {
+          id
+          name
+          slug
+          pricing {
+            priceRange {
+              start {
+                gross {
+                  amount
+                  currency
+                }
+              }
+            }
+          }
+          thumbnail(size: 1024, format: WEBP) {
+            url
+            alt
+          }
+        }
+      }
+    }
+  }
+`;
+
+type PopularProduct = {
+	id: string;
+	name: string;
+	slug: string;
+	pricing?: {
+		priceRange?: {
+			start?: {
+				gross?: {
+					amount?: number | null;
+					currency?: string | null;
+				} | null;
+			} | null;
+		} | null;
+	} | null;
+	thumbnail?: {
+		url?: string | null;
+		alt?: string | null;
+	} | null;
+};
+
+function getMetadataValue(metadata: Array<{ key: string; value: string }> | undefined, key: string) {
+  if (!metadata) {
+    return null;
+  }
+  const match = metadata.find((entry) => entry.key === key);
+  return match?.value ?? null;
+}
+
+function parsePopularIds(raw: string | null) {
+  if (!raw) {
+    return [] as string[];
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed.filter((value): value is string => typeof value === "string");
+    }
+  } catch {
+    return [];
+  }
+  return [];
+}
+
+async function getPopularProductsFallback(channel: string): Promise<PopularProduct[]> {
 	try {
 		const { products } = await executeGraphQL(ProductListPaginatedDocument, {
 			variables: {
-				first: 4,
+				first: 6,
 				channel,
 				sortBy: {
 					field: ProductOrderField.Name,
@@ -27,6 +110,65 @@ async function getPopularProducts(channel: string) {
 	} catch (error) {
 		console.error("Failed to fetch popular products:", error);
 		return [];
+	}
+}
+
+async function getPopularTodayProducts(channel: string): Promise<PopularProduct[]> {
+	const saleorApiUrl = process.env.SALEOR_API_URL || process.env.NEXT_PUBLIC_SALEOR_API_URL;
+	const appToken = process.env.SALEOR_APP_TOKEN;
+
+	if (!saleorApiUrl || !appToken) {
+		return getPopularProductsFallback(channel);
+	}
+
+	try {
+		const shopResponse = await fetch(saleorApiUrl, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${appToken}`,
+			},
+			body: JSON.stringify({ query: SHOP_QUERY }),
+			cache: "no-store",
+		});
+
+		const shopJson = await shopResponse.json();
+		if (!shopResponse.ok || shopJson?.errors?.length) {
+			return getPopularProductsFallback(channel);
+		}
+
+		const metadata = shopJson?.data?.shop?.metadata as Array<{ key: string; value: string }> | undefined;
+		const rawIds = getMetadataValue(metadata, "popularTodayProductIds");
+		const ids = parsePopularIds(rawIds).slice(0, 6);
+		if (!ids.length) {
+			return getPopularProductsFallback(channel);
+		}
+
+		const productsResponse = await fetch(saleorApiUrl, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${appToken}`,
+			},
+			body: JSON.stringify({
+				query: PRODUCTS_BY_IDS_QUERY,
+				variables: {
+					ids,
+					channel,
+				},
+			}),
+			cache: "no-store",
+		});
+
+		const productsJson = await productsResponse.json();
+		if (!productsResponse.ok || productsJson?.errors?.length) {
+			return getPopularProductsFallback(channel);
+		}
+
+		return (productsJson?.data?.products?.edges?.map((edge: any) => edge.node) || []) as PopularProduct[];
+	} catch (error) {
+		console.error("Failed to fetch popular today products:", error);
+		return getPopularProductsFallback(channel);
 	}
 }
 
@@ -56,13 +198,13 @@ export default async function HomePage(props: {
 	const { channel } = await props.params;
 
 	const [popularProducts, newProducts] = await Promise.all([
-		getPopularProducts(channel),
+		getPopularTodayProducts(channel),
 		getNewProducts(channel),
 	]);
 
 	return (
 		<PullToRefresh>
-			<div className="min-h-screen bg-white pb-24">
+			<div className="min-h-screen bg-[#FFF7ED] pb-24">
 				{/* Welcome Banner - Alfamart Red */}
 				<div className="bg-red-500 text-white px-6 py-8 mx-6 mt-6 rounded-2xl">
 					<h1 className="text-3xl font-bold mb-2">Welcome Back!</h1>
@@ -116,7 +258,7 @@ export default async function HomePage(props: {
 							</Link>
 						</div>
 						<div className="grid grid-cols-2 gap-4">
-							{popularProducts.map((product) => {
+							{popularProducts.map((product: PopularProduct) => {
 								const imageUrl = product.thumbnail?.url;
 								const imageAlt = product.thumbnail?.alt || product.name;
 								const price = product.pricing?.priceRange?.start?.gross?.amount || 0;
@@ -146,7 +288,7 @@ export default async function HomePage(props: {
 												{product.name}
 											</h3>
 											<p className="text-red-600 font-bold text-base mt-2">
-												₱{(price / 100).toFixed(2)}
+												₱{price.toFixed(2)}
 											</p>
 										</div>
 									</Link>
@@ -203,7 +345,7 @@ export default async function HomePage(props: {
 												{product.name}
 											</h3>
 											<p className="text-red-600 font-bold text-base mt-2">
-												₱{(price / 100).toFixed(2)}
+												₱{price.toFixed(2)}
 											</p>
 										</div>
 									</Link>

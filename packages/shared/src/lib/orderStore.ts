@@ -22,6 +22,9 @@ export interface Order {
 	paymentMethod?: 'cash' | 'gcash';
 	payrexPaymentId?: string;
 	cashierUpdatedAt?: string;
+	customerStatus?: 'accepted' | 'ready' | 'completed' | 'rejected' | 'preparing' | 'paid';
+	statusMessage?: string;
+	statusUpdatedAt?: string;
 }
 
 export interface OrderListEntry {
@@ -72,9 +75,25 @@ export const useOrderStore = create<OrderStore>()(
 					console.warn('[orderStore] setOrders received non-array input, using empty array fallback.');
 				}
 
-				set(() => ({
-					orders: [...safeOrders].sort((a, b) => b.createdAt - a.createdAt),
-				}));
+				set((state) => {
+					const existingById = new Map(state.orders.map((order) => [order.id, order]));
+					const merged = safeOrders.map((order) => {
+						const existing = existingById.get(order.id);
+						if (!existing) {
+							return order;
+						}
+
+						return {
+							...existing,
+							...order,
+							status: order.status,
+						};
+					});
+
+					return {
+						orders: [...merged].sort((a, b) => b.createdAt - a.createdAt),
+					};
+				});
 			},
 
 			replaceOrders: (orders) => {

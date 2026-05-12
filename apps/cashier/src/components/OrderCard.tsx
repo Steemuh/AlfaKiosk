@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useCashierTheme } from '../app/cashier-theme-context';
 
 interface OrderCardProps {
 	order: {
@@ -15,6 +16,7 @@ interface OrderCardProps {
 	onAccept: (orderId: string) => void;
 	onReject: (orderId: string) => void;
 	showActions?: boolean;
+	expandOnAccept?: boolean;
 	actionLabels?: {
 		accept?: string;
 		reject?: string;
@@ -26,18 +28,20 @@ export default function OrderCard({
 	onAccept,
 	onReject,
 	showActions = true,
+	expandOnAccept = false,
 	actionLabels = {},
 }: OrderCardProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
+	const { theme } = useCashierTheme();
 	const { accept = 'Accept', reject = 'Reject' } = actionLabels;
 	const items = Array.isArray(order.items) ? order.items : [];
 
 	const isNew = order.status === 'new';
 	const getPriorityColor = () => {
-		if (isNew) return 'border-red-500 bg-red-900/20';
-		if (order.status === 'preparing') return 'border-yellow-500 bg-yellow-900/20';
-		if (order.status === 'ready') return 'border-green-500 bg-green-900/20';
-		return 'border-blue-500 bg-blue-900/20';
+		if (isNew) return theme === 'light' ? 'border-red-500 bg-red-100' : 'border-red-500 bg-red-900/20';
+		if (order.status === 'preparing') return theme === 'light' ? 'border-yellow-500 bg-yellow-100' : 'border-yellow-500 bg-yellow-900/20';
+		if (order.status === 'ready') return theme === 'light' ? 'border-green-500 bg-green-100' : 'border-green-500 bg-green-900/20';
+		return theme === 'light' ? 'border-blue-500 bg-blue-100' : 'border-blue-500 bg-blue-900/20';
 	};
 
 	const getPriorityBadge = () => {
@@ -61,22 +65,22 @@ export default function OrderCard({
 						<span className={`${badge.color} text-white text-xs font-bold px-2 sm:px-3 py-1 rounded-full flex-shrink-0`}>
 							{badge.label}
 						</span>
-						<span className="text-xs sm:text-sm text-slate-400 flex-shrink-0">{order.elapsedTime}</span>
+						<span className={`text-xs sm:text-sm flex-shrink-0 ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>{order.elapsedTime}</span>
 					</div>
 
 					<div className="mb-2 sm:mb-3">
-						<div className="text-xl sm:text-2xl font-bold text-white truncate">{order.orderId}</div>
-						<div className="text-slate-300 text-base sm:text-lg mt-1 truncate">{order.customerName}</div>
+						<div className={`text-xl sm:text-2xl font-bold truncate ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{order.orderId}</div>
+						<div className={`text-base sm:text-lg mt-1 truncate font-semibold ${theme === 'light' ? 'text-slate-700' : 'text-slate-300'}`}>{order.customerName}</div>
 					</div>
 
 					<div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
 						<div>
-							<span className="text-slate-500">Pickup:</span>
-							<div className="text-white font-semibold">{order.pickupTime}</div>
+							<span className={theme === 'light' ? 'text-slate-600' : 'text-slate-500'}>Pickup:</span>
+							<div className={theme === 'light' ? 'text-slate-900 font-semibold' : 'text-white font-semibold'}>{order.pickupTime}</div>
 						</div>
 						<div>
-							<span className="text-slate-500">Items:</span>
-							<div className="text-white font-semibold">{typeof order.items === 'number' ? order.items : items.length}</div>
+							<span className={theme === 'light' ? 'text-slate-600' : 'text-slate-500'}>Items:</span>
+							<div className={theme === 'light' ? 'text-slate-900 font-semibold' : 'text-white font-semibold'}>{typeof order.items === 'number' ? order.items : items.length}</div>
 						</div>
 					</div>
 				</div>
@@ -87,6 +91,9 @@ export default function OrderCard({
 						<button
 							onClick={(e) => {
 								e.stopPropagation();
+								if (expandOnAccept) {
+									setIsExpanded((prev) => !prev);
+								}
 								onAccept(order.id);
 							}}
 							className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors text-xs sm:text-sm whitespace-nowrap"
@@ -108,43 +115,43 @@ export default function OrderCard({
 
 		{/* Expanded Details */}
 		{isExpanded && (
-			<div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-600/50">
+			<div className={`mt-3 sm:mt-4 pt-3 sm:pt-4 border-t ${theme === 'light' ? 'border-slate-300' : 'border-slate-600/50'}`}>
 				<div className="space-y-2 text-xs sm:text-sm">
 					<div className="flex justify-between">
-						<span className="text-slate-400">Order ID:</span>
-						<span className="text-white font-mono">{order.orderId}</span>
+						<span className={theme === 'light' ? 'text-slate-600' : 'text-slate-400'}>Order ID:</span>
+						<span className={`font-mono ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{order.orderId}</span>
 					</div>
 					<div className="flex justify-between">
-						<span className="text-slate-400">Customer:</span>
-						<span className="text-white truncate">{order.customerName}</span>
+						<span className={theme === 'light' ? 'text-slate-600' : 'text-slate-400'}>Customer:</span>
+						<span className={`truncate ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{order.customerName}</span>
 					</div>
 					<div className="flex justify-between">
-						<span className="text-slate-400">Pickup:</span>
-						<span className="text-white">{order.pickupTime}</span>
+						<span className={theme === 'light' ? 'text-slate-600' : 'text-slate-400'}>Pickup:</span>
+						<span className={theme === 'light' ? 'text-slate-900' : 'text-white'}>{order.pickupTime}</span>
 					</div>
 					<div className="flex justify-between">
-						<span className="text-slate-400">Status:</span>
-						<span className="text-white capitalize">{order.status}</span>
+						<span className={theme === 'light' ? 'text-slate-600' : 'text-slate-400'}>Status:</span>
+						<span className={`capitalize ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{order.status}</span>
 					</div>
 
 					{/* Items Section */}
-					<div className="mt-3 pt-3 border-t border-slate-600/50">
-						<span className="text-slate-400 block mb-2 font-semibold">Items Ordered:</span>
+					<div className={`mt-3 pt-3 border-t ${theme === 'light' ? 'border-slate-300' : 'border-slate-600/50'}`}>
+						<span className={`block mb-2 font-semibold ${theme === 'light' ? 'text-slate-700' : 'text-slate-400'}`}>Items Ordered:</span>
 						<div className="space-y-2">
 							{typeof order.items === 'number' ? (
-								<div className="text-white">{order.items} item(s)</div>
+								<div className={theme === 'light' ? 'text-slate-900' : 'text-white'}>{order.items} item(s)</div>
 							) : items.length > 0 ? (
 								items.map((item, idx) => (
-									<div key={idx} className="flex justify-between bg-slate-700/30 p-2 rounded">
+									<div key={idx} className={`flex justify-between p-2 rounded ${theme === 'light' ? 'bg-slate-200' : 'bg-slate-700/30'}`}>
 										<div className="flex-1">
-											<div className="text-white font-medium">{item.name}</div>
-											<div className="text-slate-400 text-xs">Qty: {item.quantity}</div>
+											<div className={`font-medium ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{item.name}</div>
+											<div className={`text-xs ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>Qty: {item.quantity}</div>
 										</div>
-										{item.price && <div className="text-emerald-400 font-semibold">₱{(item.price * item.quantity).toFixed(2)}</div>}
+										{item.price && <div className="text-emerald-600 font-semibold">₱{(item.price * item.quantity).toFixed(2)}</div>}
 									</div>
 								))
 							) : (
-								<div className="text-slate-400">No items</div>
+								<div className={theme === 'light' ? 'text-slate-600' : 'text-slate-400'}>No items</div>
 							)}
 						</div>
 					</div>

@@ -55,7 +55,7 @@ export default async function Page(props: {
 	}
 
 	return (
-		<>
+		<div className="bg-[#FFF7ED]">
 			<CategorySelector />
 			<section className="mx-auto max-w-7xl p-8 pb-16">
 				<div className="mb-6 flex justify-end">
@@ -65,6 +65,6 @@ export default async function Page(props: {
 				<ProductList products={products.edges.map((edge) => edge.node)} channel={channel} />
 				<Pagination pageInfo={products.pageInfo} />
 			</section>
-		</>
+		</div>
 	);
 }

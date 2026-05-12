@@ -25,12 +25,12 @@ export default function OrderListsPage({ theme }: OrderListsPageProps) {
 
 	const sortedEntries = useMemo(() => {
 		const entries: OrderListEntry[] = orders
-			.filter((order) => order.status === 'rejected' || order.status === 'completed')
+			.filter((order) => order.status === 'rejected' || order.status === 'completed' || !!order.rejectionReason)
 			.map((order) => {
 				const parsedTimestamp = order.cashierUpdatedAt ? Date.parse(order.cashierUpdatedAt) : NaN;
 				const timestamp = Number.isFinite(parsedTimestamp) ? parsedTimestamp : order.createdAt;
 				const action: OrderListEntry['action'] =
-					order.status === 'rejected' ? 'rejected' : 'handed-over';
+					order.status === 'rejected' || !!order.rejectionReason ? 'rejected' : 'handed-over';
 
 				return {
 					id: order.id,
@@ -102,7 +102,7 @@ export default function OrderListsPage({ theme }: OrderListsPageProps) {
 
 			return [
 				entry.orderId,
-				entry.action === 'rejected' ? 'Rejected' : 'Handed Over',
+					entry.action === 'rejected' ? 'Declined' : 'Handed Over',
 				formatDateTime(entry.timestamp),
 				entry.customerName,
 				entry.customerEmail ?? '',
@@ -181,7 +181,7 @@ export default function OrderListsPage({ theme }: OrderListsPageProps) {
 										{entry.orderId}
 									</p>
 									<span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getActionClasses(entry.action)}`}>
-										{entry.action === 'rejected' ? 'Rejected' : 'Handed Over'}
+										{entry.action === 'rejected' ? 'Declined' : 'Handed Over'}
 									</span>
 								</div>
 								<div className="flex items-center gap-2">

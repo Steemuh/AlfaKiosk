@@ -134,9 +134,10 @@ export default function ReadyForPickupTab({ theme = 'dark' }: { theme?: 'light' 
 										elapsedTime: formatElapsedTime(elapsedTime),
 									items: order.items,
 									}}
-									onAccept={() => console.log('View order:', order.id)}
+									onAccept={() => {}}
 									onReject={() => handleMarkPickedUp(order.id)}
 									showActions={true}
+									expandOnAccept={true}
 									actionLabels={{
 										accept: 'View Details',
 										reject: 'Handed Over',

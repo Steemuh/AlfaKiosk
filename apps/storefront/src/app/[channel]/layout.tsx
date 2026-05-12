@@ -10,9 +10,9 @@ export default async function ChannelLayout(props: {
 	const { channel } = await params;
 
 	return (
-		<div className="min-h-dvh bg-white">
+		<div className="min-h-dvh bg-[#FFF7ED]">
 			<Header />
-			<div className="flex min-h-dvh flex-col pt-20 pb-20">
+			<div className="flex min-h-dvh flex-col pt-24 pb-20">
 				<main className="flex-1">{children}</main>
 			</div>
 			<BottomNavBar channel={channel} />

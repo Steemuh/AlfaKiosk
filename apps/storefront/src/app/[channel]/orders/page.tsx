@@ -5,10 +5,53 @@ import { ClipboardList, Clock, CheckCircle, Loader2, Bell } from "lucide-react";
 import { useOrderStore, type Order } from "@saleor/shared/lib/orderStore";
 import { PullToRefresh } from "@/components/PullToRefresh";
 
+type ApiOrderLine = {
+	productName?: string;
+	variantName?: string | null;
+	quantity?: number;
+	unitAmount?: number;
+};
+
+type ApiOrder = {
+	id?: string;
+	number?: string | null;
+	created?: string;
+	status?: string;
+	cashierStatus?: string | null;
+	customerStatus?: string | null;
+	statusMessage?: string | null;
+	statusUpdatedAt?: string | null;
+	customerName?: string | null;
+	customerEmail?: string | null;
+	pickupTime?: string | null;
+	paymentStatus?: string | null;
+	paymentMethod?: string | null;
+	payrexPaymentId?: string | null;
+	rejectionReason?: string | null;
+	totalAmount?: number | null;
+	lines?: ApiOrderLine[];
+};
+
+function normalizeCustomerStatus(value: string | null | undefined): Order["customerStatus"] {
+	switch (value) {
+		case "accepted":
+		case "ready":
+		case "completed":
+		case "rejected":
+		case "preparing":
+		case "paid":
+			return value;
+		default:
+			return undefined;
+	}
+}
+
 export default function OrdersPage() {
 	const [mounted, setMounted] = useState(false);
 	const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 	const [statusNotices, setStatusNotices] = useState<string[]>([]);
+	const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+	const [ordersError, setOrdersError] = useState<string | null>(null);
 	const orders = useOrderStore((state) => state.orders);
 	const removeOrder = useOrderStore((state) => state.removeOrder);
 	const replaceOrders = useOrderStore((state) => state.replaceOrders);
@@ -60,6 +103,100 @@ export default function OrdersPage() {
 			window.removeEventListener("storage", onStorage);
 		};
 	}, []);
+
+	useEffect(() => {
+		if (!mounted) {
+			return;
+		}
+
+		let isActive = true;
+
+		const fetchOrders = async () => {
+			try {
+				if (isActive) {
+					setIsLoadingOrders(true);
+				}
+
+				const email = window.sessionStorage.getItem("customerEmail")
+					|| window.sessionStorage.getItem("payrexCustomerEmail")
+					|| "";
+
+				if (!email) {
+					if (isActive) {
+						setOrdersError(null);
+						setIsLoadingOrders(false);
+					}
+					return;
+				}
+
+				const response = await fetch(`/api/orders?email=${encodeURIComponent(email)}`);
+				if (!response.ok) {
+					throw new Error(`Orders request failed with status ${response.status}`);
+				}
+
+				const data: unknown = await response.json();
+				const payload = (data ?? {}) as { orders?: ApiOrder[] };
+				const rawOrders = Array.isArray(payload.orders) ? payload.orders : [];
+				const mappedOrders = rawOrders.map((order, index) => {
+					const fallbackId = `customer-order-${index}`;
+					const id = order.id || order.number || fallbackId;
+					const orderId = order.number || id;
+					const items = (order.lines ?? []).map((line) => ({
+						name: [line.productName, line.variantName].filter(Boolean).join(" - ") || "Unnamed Item",
+						quantity: Math.max(0, Number(line.quantity ?? 0)),
+						price: Number(line.unitAmount ?? 0),
+					}));
+
+					const createdAt = order.created ? new Date(order.created).getTime() : Date.now();
+					const statusUpdatedAt = order.statusUpdatedAt ?? undefined;
+					const customerStatus = normalizeCustomerStatus(order.customerStatus ?? undefined)
+						?? (order.paymentStatus === "paid" ? "paid" : undefined);
+
+					return {
+						id,
+						orderId,
+						customerName: order.customerName || "Customer",
+						customerEmail: order.customerEmail ?? undefined,
+						pickupTime: order.pickupTime || "ASAP",
+						items,
+						status: (order.cashierStatus as Order["status"]) || "incoming",
+						createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
+						totalPrice: Number(order.totalAmount ?? 0),
+						paymentStatus: order.paymentStatus as Order["paymentStatus"] | undefined,
+						paymentMethod: order.paymentMethod as Order["paymentMethod"] | undefined,
+						payrexPaymentId: order.payrexPaymentId ?? undefined,
+						rejectionReason: order.rejectionReason ?? undefined,
+						customerStatus,
+						statusMessage: order.statusMessage ?? undefined,
+						statusUpdatedAt,
+					};
+				});
+
+				if (isActive) {
+					replaceOrders(mappedOrders);
+					setOrdersError(null);
+				}
+			} catch (error) {
+				const message = error instanceof Error ? error.message : "Failed to fetch orders";
+				if (isActive) {
+					replaceOrders([]);
+					setOrdersError(message);
+				}
+			} finally {
+				if (isActive) {
+					setIsLoadingOrders(false);
+				}
+			}
+		};
+
+		fetchOrders();
+		const intervalId = window.setInterval(fetchOrders, 7000);
+
+		return () => {
+			isActive = false;
+			window.clearInterval(intervalId);
+		};
+	}, [mounted, replaceOrders]);
 
 	useEffect(() => {
 		const previous = previousStatusesRef.current;
@@ -127,8 +264,9 @@ export default function OrdersPage() {
 		);
 	}
 
-	const getStatusBadge = (status: Order["status"]) => {
-		switch (status) {
+	const getStatusBadge = (status: Order["status"], customerStatus?: Order["customerStatus"]) => {
+		const normalized = customerStatus ?? status;
+		switch (normalized) {
 			case "new":
 			case "incoming":
 				return (
@@ -137,11 +275,18 @@ export default function OrdersPage() {
 						Awaiting Confirmation
 					</span>
 				);
+			case "accepted":
+				return (
+					<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+						<CheckCircle className="h-3 w-3" />
+						Accepted
+					</span>
+				);
 			case "preparing":
 				return (
-					<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+					<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
 						<CheckCircle className="h-3 w-3" />
-						Order Received
+						Preparing
 					</span>
 				);
 			case "ready":
@@ -151,9 +296,86 @@ export default function OrdersPage() {
 						Ready for Pickup!
 					</span>
 				);
+			case "completed":
+				return (
+					<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+						<CheckCircle className="h-3 w-3" />
+						Completed
+					</span>
+				);
+			case "rejected":
+				return (
+					<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+						<Clock className="h-3 w-3" />
+						Declined
+					</span>
+				);
 			default:
 				return null;
 		}
+	};
+
+	const getPaymentBadge = (paymentStatus?: Order["paymentStatus"]) => {
+		if (paymentStatus !== "paid") {
+			return null;
+		}
+
+		return (
+			<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+				<CheckCircle className="h-3 w-3" />
+				Paid
+			</span>
+		);
+	};
+
+	const formatStatusTime = (value?: string) => {
+		if (!value) {
+			return null;
+		}
+
+		const parsed = new Date(value);
+		if (Number.isNaN(parsed.getTime())) {
+			return null;
+		}
+
+		return parsed.toLocaleString("en-US", {
+			month: "short",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+			hour12: true,
+		});
+	};
+
+	const renderTimeline = (customerStatus?: Order["customerStatus"]) => {
+		if (customerStatus === "rejected") {
+			return null;
+		}
+		const steps = ["paid", "accepted", "preparing", "ready", "completed"] as const;
+		let currentIndex = customerStatus ? steps.indexOf(customerStatus) : -1;
+
+		// When the cashier accepts the order we want both "Accepted" and "Preparing"
+		// to appear green on the customer's timeline. Treat `accepted` as if it's
+		// already at the `preparing` step for the visual timeline.
+		if (customerStatus === "accepted") {
+			currentIndex = steps.indexOf("preparing");
+		}
+		return (
+			<div className="mt-3 grid grid-cols-5 gap-1 text-[10px] text-neutral-500">
+				{steps.map((step, index) => (
+					<div
+						key={step}
+						className={`rounded-full border px-2 py-1 text-center ${
+							currentIndex >= index
+								? "border-emerald-400 bg-emerald-50 text-emerald-700"
+								: "border-neutral-200 bg-neutral-50"
+						}`}
+					>
+						{step === "paid" ? "Paid" : step.charAt(0).toUpperCase() + step.slice(1)}
+					</div>
+				))}
+			</div>
+		);
 	};
 
 	const formatTime = (timestamp: number) => {
@@ -168,7 +390,7 @@ export default function OrdersPage() {
 
 	return (
 		<PullToRefresh>
-			<div className="min-h-[calc(100vh-12rem)] px-4 py-6 pb-24">
+			<div className="min-h-[calc(100vh-12rem)] bg-[#FFF7ED] px-4 py-6 pb-24">
 				<div className="max-w-2xl mx-auto">
 				{statusNotices.length > 0 && (
 					<div className="mb-4 space-y-2">
@@ -209,6 +431,19 @@ export default function OrdersPage() {
 				)}
 
 				{/* Orders List */}
+				{ordersError && (
+					<div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+						Unable to load your orders: {ordersError}
+					</div>
+				)}
+
+				{isLoadingOrders && orders.length === 0 && (
+					<div className="mb-4 flex items-center gap-2 text-sm text-neutral-500">
+						<Loader2 className="h-4 w-4 animate-spin" />
+						Loading your latest order updates...
+					</div>
+				)}
+
 				{orders.length === 0 ? (
 					<div className="text-center py-12">
 						<div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -242,7 +477,7 @@ export default function OrdersPage() {
 
 								{/* Order Header */}
 								<div className="flex items-start justify-between mb-3">
-									<div>
+										<div>
 										<div className="flex items-center gap-2">
 											<span className="font-semibold text-neutral-900">
 												Order #{order.orderId}
@@ -255,8 +490,28 @@ export default function OrdersPage() {
 											{formatTime(order.createdAt)}
 										</p>
 									</div>
-									{getStatusBadge(order.status)}
+										<div className="flex flex-wrap items-center gap-2">
+											{getPaymentBadge(order.paymentStatus)}
+											{getStatusBadge(order.status, order.customerStatus)}
+										</div>
 								</div>
+
+								{order.statusMessage && (
+									<p className="text-sm text-neutral-700 mb-2">
+										{order.statusMessage}
+									</p>
+								)}
+								{order.rejectionReason && (
+									<p className="text-sm text-red-700 mb-2">
+										Reason: {order.rejectionReason}
+									</p>
+								)}
+								{formatStatusTime(order.statusUpdatedAt) && (
+									<p className="text-xs text-neutral-500 mb-2">
+										Updated {formatStatusTime(order.statusUpdatedAt)}
+									</p>
+								)}
+								{renderTimeline(order.customerStatus)}
 
 								{/* Ready Alert */}
 								{order.status === "ready" && (

@@ -291,6 +291,30 @@ export const PaymentSuccessClient = () => {
 				sessionStorage.removeItem("payrexReturnToCheckout");
 				sessionStorage.removeItem("payrexSessionId");
 				sessionStorage.removeItem("payrexCheckoutId");
+
+				// Clear client-side cart quantities stored per-channel and notify UI to refresh
+				try {
+					if (typeof window !== "undefined") {
+						const keysToRemove: string[] = [];
+						for (let i = 0; i < window.localStorage.length; i++) {
+							const key = window.localStorage.key(i);
+							if (key && key.startsWith("cartQuantities-")) keysToRemove.push(key);
+						}
+						keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+
+						// Remove any checkoutId-* cookies (best effort) so checkout link/badge resets
+						document.cookie.split(";").forEach((c) => {
+							const name = c.split("=")[0]?.trim();
+							if (name && name.startsWith("checkoutId-")) {
+								document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+							}
+						});
+
+						window.dispatchEvent(new Event("cart:updated"));
+					}
+				} catch (e) {
+					console.warn("Failed to clear client cart state:", e);
+				}
 				setStatus("done");
 				setMessage("Your order has been sent to the cashier.");
 			} catch (error) {

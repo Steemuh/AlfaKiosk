@@ -29,6 +29,7 @@ const UPDATE_METADATA_MUTATION = /* GraphQL */ `
 type CashierStatus = "new" | "preparing" | "ready" | "completed" | "rejected";
 type PaymentStatus = "pending" | "paid" | "failed";
 type PaymentMethod = "cash" | "gcash";
+type CustomerStatus = "accepted" | "ready" | "completed" | "rejected";
 
 interface UpdateStatusPayload {
   status: CashierStatus;
@@ -36,6 +37,38 @@ interface UpdateStatusPayload {
   paymentStatus?: PaymentStatus;
   paymentMethod?: PaymentMethod;
   payrexPaymentId?: string;
+}
+
+function getCustomerStatus(status: CashierStatus): CustomerStatus {
+  switch (status) {
+    case "preparing":
+      return "accepted";
+    case "ready":
+      return "ready";
+    case "completed":
+      return "completed";
+    case "rejected":
+      return "rejected";
+    default:
+      return "accepted";
+  }
+}
+
+function getStatusMessage(status: CashierStatus, reason?: string) {
+  switch (status) {
+    case "preparing":
+      return "Your order has been accepted and is being prepared.";
+    case "ready":
+      return "Your order is ready for pickup.";
+    case "completed":
+      return "Your order has been handed over. Thank you!";
+    case "rejected":
+      return reason
+        ? `Your order was rejected. Reason: ${reason}`
+        : "Your order was rejected.";
+    default:
+      return "Your order is being processed.";
+  }
 }
 
 function fail(message: string, status = 500, extra?: Record<string, unknown>) {
@@ -85,10 +118,16 @@ async function handleUpdate(request: NextRequest, params: { id?: string }) {
     }
 
     const { status, reason, paymentStatus, paymentMethod, payrexPaymentId } = payload;
+    const customerStatus = getCustomerStatus(status);
+    const statusMessage = getStatusMessage(status, reason);
+    const statusUpdatedAt = new Date().toISOString();
 
     const metadataInput = [
       { key: "cashierStatus", value: status },
-      { key: "cashierUpdatedAt", value: new Date().toISOString() },
+      { key: "cashierUpdatedAt", value: statusUpdatedAt },
+      { key: "customerStatus", value: customerStatus },
+      { key: "statusMessage", value: statusMessage },
+      { key: "statusUpdatedAt", value: statusUpdatedAt },
     ];
 
     if (reason) {
