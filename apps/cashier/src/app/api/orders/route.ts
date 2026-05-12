@@ -125,16 +125,26 @@ function getMetadataValue(metadata: Array<{ key: string; value: string }> | unde
 
 export async function GET() {
   try {
+    console.log("[cashier/api/orders] Starting request...");
+    console.log("[cashier/api/orders] SALEOR_API_URL:", SALEOR_API_URL ? "✓ set" : "✗ MISSING");
+    console.log("[cashier/api/orders] SALEOR_APP_TOKEN:", SALEOR_APP_TOKEN ? "✓ set" : "✗ MISSING");
+    console.log("[cashier/api/orders] DEFAULT_CHANNEL:", DEFAULT_CHANNEL);
+
     if (!SALEOR_API_URL) {
-      return fail("Missing SALEOR_API_URL", 500);
+      return fail("Missing SALEOR_API_URL environment variable", 500, {
+        env: {
+          SALEOR_API_URL: process.env.SALEOR_API_URL,
+          NEXT_PUBLIC_SALEOR_API_URL: process.env.NEXT_PUBLIC_SALEOR_API_URL,
+        },
+      });
     }
 
     if (!SALEOR_APP_TOKEN) {
-      return fail("Missing SALEOR_APP_TOKEN", 500);
+      return fail("Missing SALEOR_APP_TOKEN environment variable", 500);
     }
 
     if (!DEFAULT_CHANNEL) {
-      return fail("Missing DEFAULT_CHANNEL", 500);
+      return fail("Missing DEFAULT_CHANNEL environment variable", 500);
     }
 
     const controller = new AbortController();
@@ -142,6 +152,7 @@ export async function GET() {
 
     let upstream: Response;
     try {
+      console.log("[cashier/api/orders] Fetching from Saleor:", SALEOR_API_URL);
       upstream = await fetch(SALEOR_API_URL, {
         method: "POST",
         signal: controller.signal,
@@ -158,6 +169,10 @@ export async function GET() {
         }),
         cache: "no-store",
       });
+      console.log("[cashier/api/orders] Saleor response status:", upstream.status);
+    } catch (fetchError) {
+      console.error("[cashier/api/orders] Fetch error:", fetchError);
+      throw fetchError;
     } finally {
       clearTimeout(timeout);
     }
@@ -168,6 +183,7 @@ export async function GET() {
     try {
       parsed = rawText ? (JSON.parse(rawText) as SaleorOrdersResponse) : null;
     } catch {
+      console.error("[cashier/api/orders] JSON parse error. Response:", rawText.slice(0, 500));
       return fail("Saleor returned non-JSON response", 502, {
         saleorStatus: upstream.status,
         snippet: rawText.slice(0, 300),
@@ -175,6 +191,7 @@ export async function GET() {
     }
 
     if (!upstream.ok) {
+      console.error("[cashier/api/orders] Saleor HTTP error:", upstream.status, parsed ?? rawText.slice(0, 300));
       return fail("Saleor HTTP error", 502, {
         saleorStatus: upstream.status,
         saleorBody: parsed ?? rawText.slice(0, 300),
@@ -182,12 +199,14 @@ export async function GET() {
     }
 
     if (parsed?.errors?.length) {
+      console.error("[cashier/api/orders] Saleor GraphQL error:", parsed.errors);
       return fail("Saleor GraphQL error", 502, {
         saleorErrors: parsed.errors,
       });
     }
 
     const edges = parsed?.data?.orders?.edges ?? [];
+    console.log("[cashier/api/orders] Found", edges.length, "orders from Saleor");
 
     const orders = edges.map(({ node }) => {
       const metadata = node.metadata ?? [];
@@ -239,6 +258,7 @@ export async function GET() {
     });
 
       const paidOrders = orders.filter((order) => order.paymentStatus === "paid");
+    console.log("[cashier/api/orders] Filtering:", orders.length, "total orders,", paidOrders.length, "paid");
 
     return NextResponse.json(
       {
@@ -252,6 +272,7 @@ export async function GET() {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown server error";
+    console.error("[cashier/api/orders] Unhandled error:", message, error);
 
     return fail("Unhandled /api/orders failure", 500, {
       details: message,

@@ -133,14 +133,15 @@ export default function CashierContent() {
         let isActive = true;
 
         const fetchOrders = async () => {
-            if (isActive) {
-                // Intentionally not tracking loading state in UI for now.
-            }
-
             try {
                 const response = await fetch('/api/orders');
+                console.log('[CashierContent] Fetch response status:', response.status);
+                
                 if (!response.ok) {
-                    throw new Error(`Orders request failed with status ${response.status}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMsg = typeof errorData.error === 'string' ? errorData.error : `API error ${response.status}`;
+                    console.error('[CashierContent] API returned error:', errorMsg, errorData);
+                    throw new Error(errorMsg);
                 }
 
                 const data: unknown = await response.json();
@@ -164,14 +165,12 @@ export default function CashierContent() {
                 }
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Failed to fetch orders';
-                console.error('[CashierContent] Failed to load orders', error);
+                console.error('[CashierContent] Failed to load orders:', message, error);
 
                 if (isActive) {
                     setOrders([]);
                     setOrdersError(message);
                 }
-            } finally {
-                // no-op
             }
         };
 
